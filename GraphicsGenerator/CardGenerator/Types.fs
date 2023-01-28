@@ -242,7 +242,14 @@ let ``343rd Batallion`` = Fleet {
 let refractiveShield = Shield {
     Core = {
         Name = "Refractive Shield"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = { 
+            Text = "Draw 1 card. Some really long text to see what happens"; 
+            Metadata = { 
+                CreditGain = Some 1u<credit>
+                StrengthGain = Some 1u<strength>
+                EnergyGain = Some 1u<energy>
+                CloutGain = Some 1u<clout>
+        } }
         Cost = Some <| CreditAndStrength (88u<credit>, 88u<strength>)
         Clout = Some 88u
         Count = Some 3u

@@ -26,7 +26,7 @@ let black = MagickColor(0x8uy, 0x8uy, 0x8uy)
 let creditGold = colorWithOpacity MagickColors.Gold 0x60uy
 let strengthRed = colorWithOpacity MagickColors.Red 0x60uy
 let shieldBlue = colorWithOpacity MagickColors.CornflowerBlue 0x58uy
-let energyGreen = colorWithOpacity MagickColors.DarkSeaGreen 0x50uy
+let energyGreen = colorWithOpacity MagickColors.LawnGreen 0x50uy
 
 [<Literal>]
 let dpi = 144.<dot/inch>
@@ -53,7 +53,7 @@ let lineworkWidth = 2.<dot>
 [<Literal>]
 let textPadding = 6.<dot>
 [<Literal>]
-let abilityIconPadding = 3.<dot>
+let abilityIconPadding = 4.<dot>
 [<Literal>]
 let padding = 2.<dot>
 [<Literal>]
@@ -74,6 +74,7 @@ let cardBottomPoint = heightInches * dpi - 2. * (``1/8`` + inset + one)
 let abilityHalfPoint = (cardBottomPoint - cardMidpoint) / 2.
 let abilityThirdPoint = (cardBottomPoint - cardMidpoint) / 3.
 let abilityTwoThirdPoint = (cardBottomPoint - cardMidpoint) * 2. / 3.
+let topTextBottom = inset + ``3/8`` + medSize + 2. * padding
 
 let basePath =
     Environment.GetCommandLineArgs() 
@@ -141,7 +142,7 @@ let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (
     let scaledHalfWidth, scaledHalfHeight = int <| scale * width / 2., int <| scale * height / 2.
     let size = MagickGeometry(scaledHalfWidth * 2, scaledHalfHeight * 2)
     use ii = new MagickImage(Path.Combine(basePath, ImagesPath, path), settings)
-    ii.Resize(size)
+    ii.Resize(size) // lol the calcs aren't wrong, but scaled images appear 1 pixel too far to the top left corner
     i.Image.Composite(ii, int startX + (if scale <> 1. then (int (width / 2.) - scaledHalfWidth + 1) else 0), int startY + (if scale <> 1. then (int (height / 2.) - scaledHalfHeight + 1) else 0), CompositeOperator.Over)
     i
 
@@ -161,7 +162,20 @@ let captionText (size: float<dot>) (startX: float<dot>) (startY: float<dot>) (wi
 let captionTextCentered size startX startY height (text: string) (i: ImageState) =
     captionText size startX startY (i.Width + 1.<dot> - 2. * startX) height text i
 
-//let drawShieldAbilities (shield: Shield) (i: ImageState) =
+let drawShieldAbilities (shield: Shield) (i: ImageState) =
+    let availableHeight = cardMidpoint - topTextBottom - textPadding
+    [ Some <| float shield.Health, shieldBlue
+      Option.map float shield.Core.MainAbility.Metadata.CreditGain, creditGold
+      Option.map float shield.Core.MainAbility.Metadata.StrengthGain, strengthRed
+      Option.map float shield.Core.MainAbility.Metadata.EnergyGain, energyGreen ]
+    |> List.mapi (fun i (v, c) -> 
+        match v with
+        | Some s ->
+            filledCircle c darkGray (``5/32`` + inset + abilityIconPadding) (topTextBottom + textPadding + availableHeight * (float i / 4.) + ``5/32``) ``5/32``
+            >> (text extraLargeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + one) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int s}")
+        | None -> id)
+    |> List.iter (fun s -> s i |> ignore)
+    i
 
 let drawAbilities card (i: ImageState) =
     let drawMainTextAtHeight height text =
@@ -225,7 +239,9 @@ let drawCardCore (card: Card) (i: ImageState) =
     |> match card with
        | Ship _ -> drawLogo shipIcon
        | Fleet _ -> drawLogo fleetIcon
-       | Shield _ -> drawLogo shieldIcon
+       | Shield s -> 
+        drawLogo shieldIcon
+        >> drawShieldAbilities s
     // cost
     |> (let centerX, centerY, arcHalfLength = (width - ``1/4`` - inset - padding), (``1/4`` + inset + padding), ``1/4`` / Math.Sqrt 2.
         let circle fill from to' = filledArc fill darkGray from to' centerX centerY ``1/4``
@@ -253,6 +269,7 @@ let drawCardCore (card: Card) (i: ImageState) =
     |> drawAbilities card
     // name
     |> captionTextCentered largeSize (``3/8`` + inset) inset ``3/8`` data.Core.Name
+    // faction-kind banner
     |> captionTextCentered medSize (``3/8`` + inset) (inset + ``3/8``) (medSize + 2. * padding) $"{data.Faction.Name} {cardKind card}"
     // version
     |> text smallSize TextAlignment.Right Bottom (width - inset - padding) (height - inset - padding) version
