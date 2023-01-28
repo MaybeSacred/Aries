@@ -1,6 +1,8 @@
 ﻿open ImageMagick
 open ImageMagick.Configuration
 open System
+open System.IO
+
 open Types
 
 type Box = {
@@ -16,8 +18,15 @@ let atPosition x y box = { box with X = x; Y = y }
 let version = "v0.11"
 
 type TextVerticalAlignment = Top | Center | Bottom
-let darkGray = MagickColors.DarkSlateGray
-let black = MagickColor(0x10uy, 0x10uy, 0x10uy)
+
+let colorWithOpacity (color: IMagickColor<byte>) opacity = MagickColor(color.R, color.G, color.B, opacity)
+
+let darkGray = MagickColor(0x16uy, 0x1Fuy, 0x1Fuy)
+let black = MagickColor(0x8uy, 0x8uy, 0x8uy)
+let creditGold = colorWithOpacity MagickColors.Gold 0x60uy
+let strengthRed = colorWithOpacity MagickColors.Red 0x60uy
+let shieldBlue = colorWithOpacity MagickColors.CornflowerBlue 0x58uy
+let energyGreen = colorWithOpacity MagickColors.DarkSeaGreen 0x50uy
 
 [<Literal>]
 let dpi = 144.<dot/inch>
@@ -36,7 +45,7 @@ let medSize = 16.<dot>
 [<Literal>]
 let largeSize = 20.<dot>
 [<Literal>]
-let extraLargeSize = 28.<dot>
+let extraLargeSize = 24.<dot>
 [<Literal>]
 let extraExtraLargeSize = 40.<dot>
 [<Literal>]
@@ -56,17 +65,25 @@ let ``1/8`` = (1.<inch> / 8.) * dpi
 let ``5/32`` = (5.<inch> / 32.) * dpi
 let ``3/16`` = (3.<inch> / 16.) * dpi
 let ``1/4`` = dpi * 1.<inch> / 4.
+let ``5/16`` = (5.<inch> / 16.) * dpi
 let ``3/8`` = (3.<inch> / 8.) * dpi
 let ``1/2`` = dpi * 1.<inch> / 2.
-let creditStrengthDualCostOffset = ``1/16``
+let creditStrengthDualCostOffset = ``1/16`` + 3.<dot>
 let cardMidpoint = 2.<inch> * dpi
 let cardBottomPoint = heightInches * dpi - 2. * (``1/8`` + inset + one)
 let abilityHalfPoint = (cardBottomPoint - cardMidpoint) / 2.
 let abilityThirdPoint = (cardBottomPoint - cardMidpoint) / 3.
 let abilityTwoThirdPoint = (cardBottomPoint - cardMidpoint) * 2. / 3.
 
+let basePath =
+    Environment.GetCommandLineArgs() 
+    |> Array.tryItem 1
+    |> Option.defaultValue @"C:\Users\jtyso\Documents\Aries\"
+
 let text (size: float<dot>) hAlignment vAlignment (startX: float<dot>) (startY: float<dot>) text (i: ImageState) =
-    i.Drawables.Font("Verdana")
+    i.Drawables
+     .PushGraphicContext()
+     .Font("Verdana")
      .FillColor(black)
      .StrokeOpacity(Percentage 0.)
      .FillOpacity(Percentage 100.)
@@ -75,38 +92,57 @@ let text (size: float<dot>) hAlignment vAlignment (startX: float<dot>) (startY: 
      .Text(float startX, 
         float <| match vAlignment with | Top -> startY + size | Center -> startY + size/2. | Bottom -> startY
         , text)
+     .PopGraphicContext()
     i
 
-let filledCircle (x: float<dot>) (y: float<dot>) (radius: float<dot>) (i: ImageState) =
+let filledArc (fillColor: IMagickColor<byte>) strokeColor from to' (x: float<dot>) (y: float<dot>) (radius: float<dot>) (i: ImageState) =
     i.Drawables
-     .FillColor(black)
-     .FillOpacity(Percentage 100.)
+     .PushGraphicContext()
+     .FillColor(fillColor)
+     .FillOpacity(Percentage (float fillColor.A * 100. / 256.))
+     .StrokeColor(strokeColor)
+     .StrokeWidth(float lineworkWidth)
      .StrokeOpacity(Percentage 100.)
-     .Ellipse(float x, float y, float radius, float radius, 0., 360.)
+     .Ellipse(float x, float y, float radius, float radius, from, to')
+     .PopGraphicContext()
     i
 
-let circle (x: float<dot>) (y: float<dot>) (radius: float<dot>) (i: ImageState) =
-    i.Drawables.FillOpacity(Percentage 0.)
-     .StrokeOpacity(Percentage 100.)
-     .Ellipse(float x, float y, float radius, float radius, 0., 360.)
+let filledCircle fillColor strokeColor (x: float<dot>) (y: float<dot>) (radius: float<dot>) (i: ImageState) =
+    filledArc fillColor strokeColor 0. 360. x y radius i
+
+let outlinedCircle (x: float<dot>) (y: float<dot>) (radius: float<dot>) (i: ImageState) =
+    filledCircle MagickColors.None darkGray x y radius i
+
+let rectangle strokeColor (strokeWidth: float<dot>) (startX: float<dot>) (startY: float<dot>) (endX: float<dot>) (endY: float<dot>) (i: ImageState) =
+    i.Drawables
+     .PushGraphicContext()
+     .FillOpacity(Percentage 0.)
+     .StrokeWidth(float strokeWidth)
+     .StrokeColor(strokeColor)
+     .Rectangle(float startX, float startY, float endX, float endY)
+     .PopGraphicContext()
     i
 
 let line color (width: float<dot>) (startX: float<dot>) (startY: float<dot>) (endX: float<dot>) (endY: float<dot>) (i: ImageState) =
-    i.Drawables.FillOpacity(Percentage 0.)
+    i.Drawables
+     .PushGraphicContext()
+     .FillOpacity(Percentage 0.)
      .StrokeOpacity(Percentage 100.)
      .StrokeColor(color)
      .StrokeWidth(float width)
      .Line(float startX, float startY, float endX, float endY)
+     .PopGraphicContext()
     i
 
 let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (scale: float) (path: string) (i: ImageState) =
     let settings = MagickReadSettings()
     //settings.FillColor <- black
     settings.BackgroundColor <- MagickColors.Transparent
-    let size = MagickGeometry(int <| scale * width, int <| scale * height)
-    use ii = new MagickImage(path, settings)
+    let scaledHalfWidth, scaledHalfHeight = int <| scale * width / 2., int <| scale * height / 2.
+    let size = MagickGeometry(scaledHalfWidth * 2, scaledHalfHeight * 2)
+    use ii = new MagickImage(Path.Combine(basePath, ImagesPath, path), settings)
     ii.Resize(size)
-    i.Image.Composite(ii, int <| startX + (1. - scale) * width, int <| startY + (1. - scale) * height, CompositeOperator.Over)
+    i.Image.Composite(ii, int startX + (if scale <> 1. then (int (width / 2.) - scaledHalfWidth + 1) else 0), int startY + (if scale <> 1. then (int (height / 2.) - scaledHalfHeight + 1) else 0), CompositeOperator.Over)
     i
 
 let captionText (size: float<dot>) (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (text: string) (i: ImageState) =
@@ -125,46 +161,50 @@ let captionText (size: float<dot>) (startX: float<dot>) (startY: float<dot>) (wi
 let captionTextCentered size startX startY height (text: string) (i: ImageState) =
     captionText size startX startY (i.Width + 1.<dot> - 2. * startX) height text i
 
+//let drawShieldAbilities (shield: Shield) (i: ImageState) =
+
 let drawAbilities card (i: ImageState) =
     let drawMainTextAtHeight height text =
         captionTextCentered medSize (inset + textPadding) (cardMidpoint + padding) (height - 2. * padding) text
-    let drawAbility top text =
-        captionText medSize (inset + 2. * ``5/32`` + textPadding) (cardMidpoint + top + padding) (width - 2. * (inset + textPadding + ``5/32``)) (abilityThirdPoint - 2. * padding) text
+    let drawAbility top (height: float<dot>) icon text =
+        captionText medSize (inset + 2. * ``5/32`` + textPadding) (cardMidpoint + top + padding) (width - 2. * (inset + textPadding + ``5/32``)) (height - 2. * padding) text
         >> line darkGray lineworkWidth inset (cardMidpoint + top) (width - inset) (cardMidpoint + top)
-        >> circle (``5/32`` + inset + abilityIconPadding) (cardMidpoint + top + abilityThirdPoint / 2.) ``5/32``
+        >> outlinedCircle (``5/32`` + inset + abilityIconPadding) (cardMidpoint + top + height / 2.) ``5/32``
+        >> overlayImage (inset + abilityIconPadding) (cardMidpoint + top + (height / 2. - ``5/32``)) ``5/16`` ``5/16`` icon.ScaleCorrection icon.Path
 
-    let abilities = 
+    let main, ally, scrap, faction = 
         match card with
-        | Ship { Core = { MainAbility = main }; AllyAbility = ally; ScrapAbility = scrap } 
-        | Fleet { Core = { MainAbility = main }; AllyAbility = ally; ScrapAbility = scrap } ->
-            main, ally, scrap
-        | Shield { Core = { MainAbility = main } } ->
-            main, None, None
+        | Ship { Core = { MainAbility = main }; Faction = faction; AllyAbility = ally; ScrapAbility = scrap } 
+        | Fleet { Core = { MainAbility = main }; Faction = faction; AllyAbility = ally; ScrapAbility = scrap } ->
+            main, ally, scrap, faction
+        | Shield { Core = { MainAbility = main }; Faction = faction; } ->
+            main, None, None, faction
     i 
     |> line darkGray lineworkWidth inset cardMidpoint (width - inset) cardMidpoint
     |> line darkGray lineworkWidth inset cardBottomPoint (width - inset) cardBottomPoint
-    |> match abilities with
-        | main, Some at, Some st -> 
+    |> match ally, scrap with
+        | Some at, Some st -> 
             drawMainTextAtHeight abilityThirdPoint main.Text
-            >> drawAbility abilityThirdPoint at.Text
-            >> drawAbility abilityTwoThirdPoint st.Text
-        | main, Some at, None -> 
+            >> drawAbility abilityThirdPoint abilityThirdPoint faction.Icon.Value at.Text
+            >> drawAbility abilityTwoThirdPoint abilityThirdPoint trashIcon st.Text
+        | Some at, None -> 
             drawMainTextAtHeight abilityHalfPoint main.Text
-            >> drawAbility abilityHalfPoint at.Text
-        | main, None, Some st -> 
+            >> drawAbility abilityHalfPoint abilityHalfPoint faction.Icon.Value at.Text
+        | None, Some st -> 
             drawMainTextAtHeight abilityHalfPoint main.Text
-            >> drawAbility abilityHalfPoint st.Text
-        | main, None, None -> drawMainTextAtHeight (cardBottomPoint - cardMidpoint) main.Text
+            >> drawAbility abilityHalfPoint abilityHalfPoint trashIcon st.Text
+        | None, None -> drawMainTextAtHeight (cardBottomPoint - cardMidpoint) main.Text
 
 let drawCardCore (card: Card) (i: ImageState) =
     let data = 
         match card with
-        | Ship { Core = core; Faction = faction; Count = count }
-        | Fleet { Core = core; Faction = faction; Count = count } -> 
-            {| Faction = faction; Core = core; Count = count |}
-        | Shield { Core = core; Faction = faction; Count = count } ->
-            {| Faction = faction; Core = core; Count = Some count |}
+        | Ship { Core = core; Faction = faction }
+        | Fleet { Core = core; Faction = faction } -> 
+            {| Faction = faction; Core = core |}
+        | Shield { Core = core; Faction = faction } ->
+            {| Faction = faction; Core = core |}
         | Planet _ -> invalidOp "This function does not support drawing planets"
+
     let drawLogo (i: Icon) =
         let w = (cardMidpoint - (inset + 2. * padding + ``1/2``))
         overlayImage 
@@ -173,10 +213,12 @@ let drawCardCore (card: Card) (i: ImageState) =
             w w 
             i.ScaleCorrection i.Path
     i 
+    |> rectangle data.Faction.Primary (lineworkWidth * 2.) (inset - 3.<dot>) (inset - 3.<dot>) (width - inset + 3.<dot>) (height - inset + 3.<dot>)
+    |> rectangle darkGray lineworkWidth inset inset (width - inset) (height - inset)
     // icon
     |> match data.Faction.Icon with
        | Some p ->
-           circle (``1/4`` + inset + padding) (``1/4`` + inset + padding) ``1/4`` 
+           outlinedCircle (``1/4`` + inset + padding) (``1/4`` + inset + padding) ``1/4`` 
            >> overlayImage (inset + padding) (inset + padding) ``1/2`` ``1/2`` p.ScaleCorrection p.Path
        | None -> id
     // logo
@@ -185,24 +227,27 @@ let drawCardCore (card: Card) (i: ImageState) =
        | Fleet _ -> drawLogo fleetIcon
        | Shield _ -> drawLogo shieldIcon
     // cost
-    |> (let circle = circle (width - ``1/4`` - inset - padding) (``1/4`` + inset + padding) ``1/4``
+    |> (let centerX, centerY, arcHalfLength = (width - ``1/4`` - inset - padding), (``1/4`` + inset + padding), ``1/4`` / Math.Sqrt 2.
+        let circle fill from to' = filledArc fill darkGray from to' centerX centerY ``1/4``
         match data.Core.Cost with
        | Some (CreditOnly c) ->
-           circle
+           circle creditGold 0. 360.
            >> text extraExtraLargeSize TextAlignment.Center Center (width - ``1/4`` - inset - one) (``1/4`` + inset - padding) (string c)
        | Some (StrengthOnly s) ->
-           circle
+           circle strengthRed 0. 360.
            >> text extraExtraLargeSize TextAlignment.Center Center (width - ``1/4`` - inset - one) (``1/4`` + inset - padding) (string s)
        | Some (CreditAndStrength (c,s)) ->
-           circle
+           circle creditGold 135. 315.
+           >> circle strengthRed 315. 135.
            >> text extraLargeSize TextAlignment.Center Center (width - ``1/4`` - creditStrengthDualCostOffset - inset - one) (``1/4`` - creditStrengthDualCostOffset + inset - one) (string c)
            >> text extraLargeSize TextAlignment.Center Center (width - ``1/4`` + creditStrengthDualCostOffset - inset - one) (``1/4`` + creditStrengthDualCostOffset + inset - one) (string s)
+           >> line darkGray lineworkWidth (centerX - arcHalfLength) (centerY + arcHalfLength) (centerX + arcHalfLength) (centerY - arcHalfLength)
        | None -> id)
     // clout
     |> match data.Core.Clout with
        | Some i -> 
-            circle (``1/8``+ inset + padding) (height - ``1/8`` - inset - padding) ``1/8``
-            >> (string i |> text largeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (height - ``1/8`` - inset - padding - one))
+            outlinedCircle (``1/8``+ inset + padding) (height - ``1/8`` - inset - padding) ``1/8``
+            >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (height - ``1/8`` - inset - padding - padding))
        | None -> id
     // ability area
     |> drawAbilities card
@@ -211,33 +256,22 @@ let drawCardCore (card: Card) (i: ImageState) =
     |> captionTextCentered medSize (``3/8`` + inset) (inset + ``3/8``) (medSize + 2. * padding) $"{data.Faction.Name} {cardKind card}"
     // version
     |> text smallSize TextAlignment.Right Bottom (width - inset - padding) (height - inset - padding) version
-    |> (List.init (Option.defaultValue 0u data.Count |> int) id
-        |> List.fold (fun s i -> s >> filledCircle (width - inset - 0.325<inch> * dpi  - (float i) * (smallSize + padding)) (height - inset - padding - smallSize/2.) (circleSize / 2.)) id)
+    |> (List.init (Option.defaultValue 0u data.Core.Count |> int) id
+        |> List.fold (fun s i -> s >> filledCircle black darkGray (width - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (height - inset - padding - smallSize/2.) (circleSize / 2.)) id)
 
 let draw (path: string) card =
     use image = new MagickImage(MagickColors.White, int (width + 1.<dot>), int (height + 1.<dot>))
     printfn $"Drawing card {card} to path {path}"
     image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
-    let drawable = 
-        Drawables()
-         .FillOpacity(Percentage 0.)
-         // border
-         .StrokeWidth(float <| lineworkWidth * 2.)
-         .StrokeColor(imperium.Primary)
-         .Rectangle(float <| inset - 3.<dot>, float <| inset - 3.<dot>, float <| width - inset + 3.<dot>, float <| height - inset + 3.<dot>)
-         .StrokeColor(darkGray)
-         .StrokeWidth(float lineworkWidth)
-         .Rectangle(float inset, float inset, float <| width - inset, float <| height - inset)
-
+    
+    let drawable = Drawables()
     { Image = image; Drawables = drawable; Width = width; Height = height }
     |> drawCardCore card
     |> ignore
     drawable.Draw image
-    //image.Composite()
     image.Write path
 
-
-printfn "Hello from F#"
+let outputPath = System.IO.Path.Combine(basePath, CardPath)
 
 sampleCards
-|> List.iter (fun s -> draw $"..\..\..\..\..\..\Cards\{name s |> String.filter (fun c -> c <> ' ')}.png" s)
+|> List.iter (fun s -> draw $"{outputPath}\{name s |> String.filter (fun c -> c <> ' ')}.png" s)
