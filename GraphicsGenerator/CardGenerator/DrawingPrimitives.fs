@@ -52,16 +52,30 @@ type Boundaries = {
 type ImageState = {
     Image: MagickImage
     Drawables: IDrawables<byte>
+    Boxes: Box list
 }
-//    Boxes: Box list
 
-//let pushBox box i =
-//    { i with Boxes = List.append i.Boxes [box] }
+let zeroBox drawFrom width height = { X = 0.<dot>; Y = 0.<dot>; Width = width; Height = height; DrawFrom = drawFrom }
 
-//let popBox box i =
-//    { i with Boxes = List. List.append i.Boxes [box] }
+let pushBox box i =
+    { i with Boxes = List.Cons (box, i.Boxes) }
 
-// drawFrom TopRight TopLeft ?
+let pushFromExistingBox drawFrom x y i = 
+    let box = { X = x; Y = y; Width = i.Boxes[0].Width; Height = i.Boxes[0].Height; DrawFrom = drawFrom }
+    { i with Boxes = List.Cons (box, i.Boxes) }
+
+let popBox i =
+    { i with Boxes = List.tail i.Boxes }
+
+let translateWith x y boxes =
+    boxes 
+    |> List.fold (fun (x,y, last) b -> 
+        match last.DrawFrom with
+        | TopLeft -> (x + b.X, y + b.Y, b)
+        | TopRight -> (b.X + b.Width - x, y + b.Y, b)
+        | BottomLeft -> (x + b.X, b.Y + b.Height - y, b)
+        | BottomRight -> (b.X + b.Width - x, b.Y + b.Height - y, b)
+    ) (x,y, boxes.Head)
 
 let fromDimensions width height = {
     Width = width
@@ -123,6 +137,7 @@ let basePath =
     |> Option.defaultValue @"C:\Users\jtyso\Documents\Aries\"
 
 let text (size: float<dot>) hAlignment vAlignment (startX: float<dot>) (startY: float<dot>) text (i: ImageState) =
+    let startX, startY = translateWith startX startY i.Boxes
     i.Drawables
      .PushGraphicContext()
      .Font("Verdana")
@@ -138,6 +153,7 @@ let text (size: float<dot>) hAlignment vAlignment (startX: float<dot>) (startY: 
     i
 
 let filledArc (fillColor: IMagickColor<byte>) strokeColor from to' (x: float<dot>) (y: float<dot>) (radius: float<dot>) (i: ImageState) =
+    let x, y = translateWith x y i.Boxes
     i.Drawables
      .PushGraphicContext()
      .FillColor(fillColor)
@@ -156,6 +172,7 @@ let outlinedCircle (x: float<dot>) (y: float<dot>) (radius: float<dot>) (i: Imag
     filledCircle MagickColors.None darkGray x y radius i
 
 let rectangle strokeColor (strokeWidth: float<dot>) (startX: float<dot>) (startY: float<dot>) (endX: float<dot>) (endY: float<dot>) (i: ImageState) =
+    let startX, startY = translateWith startX startY i.Boxes
     i.Drawables
      .PushGraphicContext()
      .FillOpacity(Percentage 0.)
@@ -166,6 +183,8 @@ let rectangle strokeColor (strokeWidth: float<dot>) (startX: float<dot>) (startY
     i
 
 let line color (width: float<dot>) (startX: float<dot>) (startY: float<dot>) (endX: float<dot>) (endY: float<dot>) (i: ImageState) =
+    let startX, startY = translateWith startX startY i.Boxes
+    let endX, endY = translateWith endX endY i.Boxes
     i.Drawables
      .PushGraphicContext()
      .FillOpacity(Percentage 0.)
@@ -177,6 +196,7 @@ let line color (width: float<dot>) (startX: float<dot>) (startY: float<dot>) (en
     i
 
 let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (scale: float) (path: string) (i: ImageState) =
+    let startX, startY = translateWith startX startY i.Boxes
     let settings = MagickReadSettings()
     //settings.FillColor <- black
     settings.BackgroundColor <- MagickColors.Transparent
@@ -188,6 +208,7 @@ let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (
     i
 
 let captionText (size: float<dot>) (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (text: string) (i: ImageState) =
+    let startX, startY = translateWith startX startY i.Boxes
     let settings = MagickReadSettings()
     settings.Font <- "Verdana"
     settings.FontPointsize <- float size

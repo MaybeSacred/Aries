@@ -283,5 +283,5 @@ let planet = Planet {
 }
 
 let sampleCards = 
-    [planet]
-    //[sparky; bigCredit; bigLaser; imperialFighter; ``343rd Batallion``; refractiveShield]
+    //[planet]
+    [sparky; bigCredit; bigLaser; imperialFighter; ``343rd Batallion``; refractiveShield]

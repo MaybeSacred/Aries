@@ -62,22 +62,24 @@ let drawAbilities boundaries card (i: ImageState) =
         | None, None -> drawMainTextAtHeight (cardBottomPoint - cardMidpoint) main.Text
 
 let drawCostAt boundaries cost =
-    let centerX, centerY, arcHalfLength = (boundaries.PixelWidth - ``1/4`` - inset - padding), (``1/4`` + inset + padding), ``1/4`` / Math.Sqrt 2.
+    let centerX, centerY, arcHalfLength = (boundaries.PixelWidth - ``1/4`` - padding), (``1/4`` + padding), ``1/4`` / Math.Sqrt 2.
     let circle fill from to' = filledArc fill darkGray from to' centerX centerY ``1/4``
-    match cost with
-    | Some (CreditOnly c) ->
-        circle creditGold 0. 360.
-        >> text extraExtraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - inset - one) (``1/4`` + inset - padding) (string c)
-    | Some (StrengthOnly s) ->
-        circle strengthRed 0. 360.
-        >> text extraExtraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - inset - one) (``1/4`` + inset - padding) (string s)
-    | Some (CreditAndStrength (c,s)) ->
-        circle creditGold 135. 315.
-        >> circle strengthRed 315. 135.
-        >> text extraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - creditStrengthDualCostOffset - inset - one) (``1/4`` - creditStrengthDualCostOffset + inset - one) (string c)
-        >> text extraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` + creditStrengthDualCostOffset - inset - one) (``1/4`` + creditStrengthDualCostOffset + inset - one) (string s)
-        >> line darkGray lineworkWidth (centerX - arcHalfLength) (centerY + arcHalfLength) (centerX + arcHalfLength) (centerY - arcHalfLength)
-    | None -> id
+    pushFromExistingBox TopRight 0.<dot> 0.<dot>
+    >> match cost with
+        | Some (CreditOnly c) ->
+            circle creditGold 0. 360.
+            >> text extraExtraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - one) (``1/4`` - padding) (string c)
+        | Some (StrengthOnly s) ->
+            circle strengthRed 0. 360.
+            >> text extraExtraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - one) (``1/4`` - padding) (string s)
+        | Some (CreditAndStrength (c,s)) ->
+            circle creditGold 135. 315.
+            >> circle strengthRed 315. 135.
+            >> text extraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - creditStrengthDualCostOffset - one) (``1/4`` - creditStrengthDualCostOffset - one) (string c)
+            >> text extraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` + creditStrengthDualCostOffset - one) (``1/4`` + creditStrengthDualCostOffset - one) (string s)
+            >> line darkGray lineworkWidth (centerX - arcHalfLength) (centerY + arcHalfLength) (centerX + arcHalfLength) (centerY - arcHalfLength)
+        | None -> id
+    >> popBox
 
 let drawCardCore boundaries (card: Card) (i: ImageState) =
     let data = 
@@ -98,11 +100,12 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     i 
     |> rectangle data.Faction.Primary (lineworkWidth * 2.) (inset - 3.<dot>) (inset - 3.<dot>) (boundaries.PixelWidth - inset + 3.<dot>) (boundaries.PixelHeight - inset + 3.<dot>)
     |> rectangle darkGray lineworkWidth inset inset (boundaries.PixelWidth - inset) (boundaries.PixelHeight - inset)
+    |> pushBox { X = inset; Y = inset; Width = boundaries.PixelWidth - 2. * inset; Height = boundaries.PixelHeight - 2. * inset; DrawFrom = TopLeft }
     // icon
     |> match data.Faction.Icon with
        | Some p ->
-           outlinedCircle (``1/4`` + inset + padding) (``1/4`` + inset + padding) ``1/4`` 
-           >> overlayImage (inset + padding) (inset + padding) ``1/2`` ``1/2`` p.ScaleCorrection p.Path
+           outlinedCircle (``1/4`` + padding) (``1/4`` + padding) ``1/4`` 
+           >> overlayImage padding padding ``1/2`` ``1/2`` p.ScaleCorrection p.Path
        | None -> id
     // logo
     |> match card with
@@ -116,15 +119,15 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // clout
     |> match data.Clout with
        | Some i -> 
-            outlinedCircle (``1/8``+ inset + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
-            >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
+            outlinedCircle (``1/8`` + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
+            >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
        | None -> id
     // ability area
     |> drawAbilities boundaries card
     // name
-    |> captionTextCentered boundaries largeSize (``3/8`` + inset) inset ``3/8`` data.Name
+    |> captionTextCentered boundaries largeSize ``3/8`` inset ``3/8`` data.Name
     // faction-kind banner
-    |> captionTextCentered boundaries medSize (``3/8`` + inset) (inset + ``3/8``) (medSize + 2. * padding) $"{data.Faction.Name} {cardKind card}"
+    |> captionTextCentered boundaries medSize ``3/8`` ``3/8`` (medSize + 2. * padding) $"{data.Faction.Name} {cardKind card}"
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
     |> (List.init (Option.defaultValue 0u data.Count |> int) id
@@ -132,6 +135,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
 
 let drawPlanet boundaries (card: Planet) (i: ImageState) =
     let nameBottom = largeSize + inset + 2. * textPadding
+
     let drawLogo (i: Icon) =
         let w = (cardMidpoint - (inset + 2. * padding + ``1/2``))
         overlayImage 
@@ -173,7 +177,8 @@ let draw (path: string) card =
     image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
     
     let drawable = Drawables()
-    { Image = image; Drawables = drawable }
+    { Image = image; Drawables = drawable; 
+      Boxes = [zeroBox TopLeft boundaries.PixelWidth boundaries.PixelHeight ] }
     |> match card with
        | Planet p -> drawPlanet boundaries p
        | s -> drawCardCore boundaries s
