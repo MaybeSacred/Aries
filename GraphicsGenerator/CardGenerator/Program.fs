@@ -40,8 +40,8 @@ let drawAbilities boundaries card (i: ImageState) =
 
     let main, ally, scrap, faction = 
         match card with
-        | Ship { Core = { MainAbility = main; Faction = faction }; AllyAbility = ally; ScrapAbility = scrap } 
-        | Fleet { Core = { MainAbility = main; Faction = faction }; AllyAbility = ally; ScrapAbility = scrap } ->
+        | Ship { Core = { MainAbility = main; Faction = faction }; AllyAbility = ally; TrashAbility = scrap } 
+        | Fleet { Core = { MainAbility = main; Faction = faction }; AllyAbility = ally; TrashAbility = scrap } ->
             main, ally, scrap, faction
         | Shield { Core = { MainAbility = main; Faction = faction } } ->
             main, None, None, faction
@@ -80,12 +80,13 @@ let drawCostAt boundaries cost =
     | None -> id
 
 let drawCardCore boundaries (card: Card) (i: ImageState) =
-    let data = 
+    let data, transformed = 
         match card with
-        | Ship { Core = core }
-        | Fleet { Core = core }
+        | Ship { Core = core; Transformed = transformed }
+        | Fleet { Core = core; Transformed = transformed } ->
+            core, transformed
         | Shield { Core = core } ->
-            core 
+            core, false
         | Planet _ -> invalidOp "This function does not support drawing planets"
 
     let drawLogo (i: Icon) =
@@ -114,7 +115,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // cost
     |> drawCostAt boundaries data.Cost
     // clout
-    |> match data.Clout with
+    |> match data.Reward with
        | Some i -> 
             outlinedCircle (``1/8``+ inset + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
             >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
@@ -122,9 +123,9 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // ability area
     |> drawAbilities boundaries card
     // name
-    |> captionTextCentered boundaries largeSize (``3/8`` + inset) inset ``3/8`` data.Name
+    |> captionTextCentered boundaries largeSize (``1/2`` + inset + padding) inset ``3/8`` data.Name
     // faction-kind banner
-    |> captionTextCentered boundaries medSize (``3/8`` + inset) (inset + ``3/8``) (medSize + 2. * padding) $"{data.Faction.Name} {cardKind card}"
+    |> captionTextCentered boundaries medSize (``1/2`` + inset + padding) (inset + ``3/8``) (medSize + 2. * padding) $"""{(if transformed then "Transformed " else "")}{data.Faction.Name} {cardKind card}"""
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
     |> (List.init (Option.defaultValue 0u data.Count |> int) id
@@ -182,6 +183,10 @@ let draw (path: string) card =
     image.Write path
 
 let outputPath = System.IO.Path.Combine(basePath, CardPath)
-
-sampleCards
+if Directory.Exists outputPath then
+    Directory.Delete(outputPath, true)
+    Directory.CreateDirectory outputPath |> ignore
+//sampleCards
+SpreadsheetLoader.load @"C:\Users\jtyso\Documents\Aries\Cards.ods"
 |> List.iter (fun s -> draw $"{outputPath}\{name s |> String.filter (fun c -> c <> ' ')}.png" s)
+

@@ -43,20 +43,10 @@ let defaultMetadata = {
     CloutGain = None
 }
 
-type MainAbility = {
-    Text: string 
-    Metadata: AbilityMetadata  
-}
-
-type AllyAbility = {
+type Ability = {
     Text: string 
     Metadata: AbilityMetadata
     IsInfinite: bool
-}
-
-type ScrapAbility = {
-    Text: string 
-    Metadata: AbilityMetadata
 }
 
 type CardCost =
@@ -67,17 +57,18 @@ type CardCost =
 // it's card-core parkour
 type CardCore = {
     Name: string
-    MainAbility: MainAbility
+    MainAbility: Ability
     Cost: CardCost option
     Count: uint option
-    Clout: uint option
+    Reward: uint option
     Faction: FactionData
 }
 
 type FleetOrShip = {
     Core: CardCore
-    AllyAbility: AllyAbility option
-    ScrapAbility: ScrapAbility option
+    AllyAbility: Ability option
+    TrashAbility: Ability option
+    Transformed: bool
 }
 
 type Shield = {
@@ -112,6 +103,8 @@ let name =
     | Ship { Core = { Name = name } } 
     | Fleet { Core = { Name = name } } 
     | Planet { Core = { Name = name } } -> name
+
+// data
 
 let shipIcon = {
     Path = @"Ship.webp"
@@ -188,73 +181,79 @@ let rogueAlliance = {
 let sparky = Ship {
     Core = {
         Name = "Metallic Hydrogen Supplier"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 88u<credit>
-        Clout = Some 88u
+        Reward = Some 88u
         Count = Some 3u
         Faction = rogueAlliance
     }
     AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
-    ScrapAbility = None
+    TrashAbility = None
+    Transformed = false
 }
 
 let imperialFighter = Ship {
     Core = {
         Name = "Imperial Fighter"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 88u<credit>
-        Clout = Some 88u
+        Reward = Some 88u
         Count = Some 3u
         Faction = imperium
     }
     AllyAbility = None
-    ScrapAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata }
+    TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
+    Transformed = false
 }
 
 let ``343rd Batallion`` = Fleet {
     Core = {
         Name = "343rd Batallion"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| StrengthOnly 88u<strength>
-        Clout = Some 88u
+        Reward = Some 88u
         Count = Some 3u
         Faction = botBrigade
     }
     AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
-    ScrapAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata }
+    TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
+    Transformed = false
 }
 
 let bigCredit = Ship {
     Core = {
         Name = "Big Credit"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 22u<credit>
-        Clout = Some 1u
+        Reward = Some 1u
         Count = None
         Faction = unaligned
     }
     AllyAbility = None
-    ScrapAbility = None
+    TrashAbility = None
+    Transformed = false
 }
 
 let bigLaser = Ship {
     Core = {
         Name = "Big Laser"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 22u<credit>
-        Clout = Some 1u
+        Reward = Some 1u
         Count = None
         Faction = unaligned
     }
     AllyAbility = None
-    ScrapAbility = None
+    TrashAbility = None
+    Transformed = false
 }
 
 let refractiveShield = Shield {
     Core = {
         Name = "Refractive Shield"
         MainAbility = { 
-            Text = "Draw 1 card. Some really long text to see what happens"; 
+            Text = "Draw 1 card. Some really long text to see what happens";
+            IsInfinite = false
             Metadata = { 
                 CreditGain = Some 1u<credit>
                 StrengthGain = Some 1u<strength>
@@ -262,7 +261,7 @@ let refractiveShield = Shield {
                 CloutGain = Some 1u<clout>
         } }
         Cost = Some <| CreditAndStrength (88u<credit>, 88u<strength>)
-        Clout = Some 88u
+        Reward = Some 88u
         Count = Some 3u
         Faction = stellarion
     }
@@ -272,9 +271,9 @@ let refractiveShield = Shield {
 let planet = Planet {
     Core = {
         Name = "Vega"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 88u<credit>
-        Clout = Some 88u
+        Reward = Some 88u
         Count = Some 1u
         Faction = unaligned
     }
