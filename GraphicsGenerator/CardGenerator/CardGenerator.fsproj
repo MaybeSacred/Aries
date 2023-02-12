@@ -6,13 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="DrawingPrimitives.fs" />
     <Compile Include="Types.fs" />
+    <Compile Include="DrawingPrimitives.fs" />
     <Compile Include="SpreadsheetLoader.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Collections.ParallelSeq" Version="1.2.0" />
     <PackageReference Include="FSharp.Data" Version="5.0.2" />
     <PackageReference Include="fsharpplus" Version="1.3.2" />
     <PackageReference Include="fstoolkit.errorhandling" Version="4.3.0" />

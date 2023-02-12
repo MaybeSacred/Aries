@@ -2,17 +2,27 @@
 open ImageMagick.Configuration
 open System
 open System.IO
+open Microsoft.FSharp.Collections
+open FSharp.Collections.ParallelSeq
 
 open Types
 open DrawingPrimitives
 
-let creditStrengthDualCostOffset = ``1/16`` + 3.<dot>
+let creditStrengthDualCostOffset = ``1/16`` + 2.<dot>
 let cardMidpoint = 2.<inch> * dpi
-let cardBottomPoint = cardBoundaries.Height * dpi - 2. * (``1/8`` + inset + one)
+let cardBottomPoint = cardBoundaries.Height * dpi - 2. * (``1/8`` + inset + quanta)
+let planetVerticalMidpoint = 2.<inch> * dpi
 let abilityHalfPoint = (cardBottomPoint - cardMidpoint) / 2.
 let abilityThirdPoint = (cardBottomPoint - cardMidpoint) / 3.
 let abilityTwoThirdPoint = (cardBottomPoint - cardMidpoint) * 2. / 3.
 let topTextBottom = inset + ``3/8`` + medSize + 2. * padding
+let iconCostRadius = ``3/16``
+let iconCostDiameter = 2. * iconCostRadius
+let iconCostYOffset = iconCostRadius + inset + padding + quanta
+let iconCostTextXOffset = iconCostRadius + inset + padding
+let iconCostTextYOffset = iconCostRadius + inset - quanta
+let rewardRadius = ``1/8`` - quanta
+let rewardDiameter = 2. * rewardRadius
 
 let drawShieldAbilities (shield: Shield) (i: ImageState) =
     let availableHeight = cardMidpoint - topTextBottom - textPadding
@@ -24,7 +34,7 @@ let drawShieldAbilities (shield: Shield) (i: ImageState) =
         match v with
         | Some s ->
             filledCircle c darkGray (``5/32`` + inset + abilityIconPadding) (topTextBottom + textPadding + availableHeight * (float i / 4.) + ``5/32``) ``5/32``
-            >> (text extraLargeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + one) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int s}")
+            >> (text extraLargeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int s}")
         | None -> id)
     |> List.iter (fun s -> s i |> ignore)
     i
@@ -36,7 +46,7 @@ let drawAbilities boundaries card (i: ImageState) =
         captionText medSize (inset + 2. * ``5/32`` + textPadding) (cardMidpoint + top + padding) (boundaries.PixelWidth - 2. * (inset + textPadding + ``5/32``)) (height - 2. * padding) text
         >> line darkGray lineworkWidth inset (cardMidpoint + top) (boundaries.PixelWidth - inset) (cardMidpoint + top)
         >> outlinedCircle (``5/32`` + inset + abilityIconPadding) (cardMidpoint + top + height / 2.) ``5/32``
-        >> overlayImage (inset + abilityIconPadding) (cardMidpoint + top + (height / 2. - ``5/32``)) ``5/16`` ``5/16`` icon.ScaleCorrection icon.Path
+        >> overlayImage (inset + abilityIconPadding) (cardMidpoint + top + (height / 2. - ``5/32``)) ``5/16`` ``5/16`` icon
 
     let main, ally, scrap, faction = 
         match card with
@@ -52,41 +62,49 @@ let drawAbilities boundaries card (i: ImageState) =
         | Some at, Some st -> 
             drawMainTextAtHeight abilityThirdPoint main.Text
             >> drawAbility abilityThirdPoint abilityThirdPoint faction.Icon.Value at.Text
-            >> drawAbility abilityTwoThirdPoint abilityThirdPoint trashIcon st.Text
+            >> drawAbility abilityTwoThirdPoint abilityThirdPoint trashImage st.Text
         | Some at, None -> 
             drawMainTextAtHeight abilityHalfPoint main.Text
             >> drawAbility abilityHalfPoint abilityHalfPoint faction.Icon.Value at.Text
         | None, Some st -> 
             drawMainTextAtHeight abilityHalfPoint main.Text
-            >> drawAbility abilityHalfPoint abilityHalfPoint trashIcon st.Text
+            >> drawAbility abilityHalfPoint abilityHalfPoint trashImage st.Text
         | None, None -> drawMainTextAtHeight (cardBottomPoint - cardMidpoint) main.Text
 
 let drawCostAt boundaries cost =
-    let centerX, centerY, arcHalfLength = (boundaries.PixelWidth - ``1/4`` - inset - padding), (``1/4`` + inset + padding), ``1/4`` / Math.Sqrt 2.
-    let circle fill from to' = filledArc fill darkGray from to' centerX centerY ``1/4``
+    let centerX, arcHalfLength = (boundaries.PixelWidth - iconCostYOffset), iconCostRadius / Math.Sqrt 2.
+    let textCenterX = boundaries.PixelWidth - iconCostTextXOffset
+    let circle fill from to' y = filledArc fill darkGray from to' centerX y iconCostRadius
     match cost with
     | Some (CreditOnly c) ->
-        circle creditGold 0. 360.
-        >> text extraExtraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - inset - one) (``1/4`` + inset - padding) (string c)
+        circle creditGold 0 360 iconCostYOffset
+        >> text extraExtraLargeSize TextAlignment.Center Center textCenterX iconCostTextYOffset (string c)
     | Some (StrengthOnly s) ->
-        circle strengthRed 0. 360.
-        >> text extraExtraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - inset - one) (``1/4`` + inset - padding) (string s)
+        circle strengthRed 0 360 iconCostYOffset
+        >> text extraExtraLargeSize TextAlignment.Center Center textCenterX iconCostTextYOffset (string s)
+    | Some (CreditOrStrength (c,s)) ->
+        circle creditGold 135 315 iconCostYOffset
+        >> circle strengthRed 315 135 iconCostYOffset
+        >> text extraLargeSize TextAlignment.Center Center (textCenterX - creditStrengthDualCostOffset) (iconCostTextYOffset - creditStrengthDualCostOffset) (string c)
+        >> text extraLargeSize TextAlignment.Center Center (textCenterX + creditStrengthDualCostOffset) (iconCostTextYOffset + creditStrengthDualCostOffset) (string s)
+        >> line darkGray lineworkWidth (centerX - arcHalfLength) (iconCostYOffset + arcHalfLength) (centerX + arcHalfLength) (iconCostYOffset - arcHalfLength)
+    // TODO
     | Some (CreditAndStrength (c,s)) ->
-        circle creditGold 135. 315.
-        >> circle strengthRed 315. 135.
-        >> text extraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` - creditStrengthDualCostOffset - inset - one) (``1/4`` - creditStrengthDualCostOffset + inset - one) (string c)
-        >> text extraLargeSize TextAlignment.Center Center (boundaries.PixelWidth - ``1/4`` + creditStrengthDualCostOffset - inset - one) (``1/4`` + creditStrengthDualCostOffset + inset - one) (string s)
-        >> line darkGray lineworkWidth (centerX - arcHalfLength) (centerY + arcHalfLength) (centerX + arcHalfLength) (centerY - arcHalfLength)
+        let strengthYCenterOffset = iconCostDiameter + 2. * padding
+        circle creditGold 0 360 iconCostYOffset
+        >> text extraExtraLargeSize TextAlignment.Center Center textCenterX iconCostTextYOffset (string c)
+        >> circle strengthRed 0 360 (iconCostYOffset + strengthYCenterOffset)
+        >> text extraExtraLargeSize TextAlignment.Center Center textCenterX (iconCostTextYOffset + strengthYCenterOffset) (string s)
     | None -> id
 
 let drawCardCore boundaries (card: Card) (i: ImageState) =
-    let data, transformed = 
+    let data, upgraded = 
         match card with
-        | Ship { Core = core; Transformed = transformed }
-        | Fleet { Core = core; Transformed = transformed } ->
-            core, transformed
-        | Shield { Core = core } ->
-            core, false
+        | Ship { Core = core; Upgraded = upgraded }
+        | Fleet { Core = core; Upgraded = upgraded } ->
+            core, upgraded
+        | Shield { Core = core; Upgraded = upgraded } ->
+            core, upgraded
         | Planet _ -> invalidOp "This function does not support drawing planets"
 
     let drawLogo (i: Icon) =
@@ -94,38 +112,37 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
         overlayImage 
             (boundaries.PixelWidth / 2. - w / 2.)
             (inset + 2. * padding + ``1/2``) 
-            w w 
-            i.ScaleCorrection i.Path
+            w w i
     i 
-    |> rectangle data.Faction.Primary (lineworkWidth * 2.) (inset - 3.<dot>) (inset - 3.<dot>) (boundaries.PixelWidth - inset + 3.<dot>) (boundaries.PixelHeight - inset + 3.<dot>)
+    |> rectangle data.Faction.Primary inset (inset / 2.) (inset / 2.) (boundaries.PixelWidth - (inset / 2.)) (boundaries.PixelHeight - (inset / 2.))
     |> rectangle darkGray lineworkWidth inset inset (boundaries.PixelWidth - inset) (boundaries.PixelHeight - inset)
     // icon
     |> match data.Faction.Icon with
        | Some p ->
-           outlinedCircle (``1/4`` + inset + padding) (``1/4`` + inset + padding) ``1/4`` 
-           >> overlayImage (inset + padding) (inset + padding) ``1/2`` ``1/2`` p.ScaleCorrection p.Path
+           outlinedCircle iconCostYOffset iconCostYOffset iconCostRadius
+           >> overlayImage (inset + padding + quanta) (inset + padding + quanta) iconCostDiameter iconCostDiameter p
        | None -> id
     // logo
     |> match card with
-       | Ship _ -> drawLogo shipIcon
-       | Fleet _ -> drawLogo fleetIcon
+       | Ship _ -> drawLogo shipImage
+       | Fleet _ -> drawLogo fleetImage
        | Shield s -> 
-        drawLogo shieldIcon
+        drawLogo shieldImage
         >> drawShieldAbilities s
     // cost
     |> drawCostAt boundaries data.Cost
-    // clout
+    // reward
     |> match data.Reward with
        | Some i -> 
-            outlinedCircle (``1/8``+ inset + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
-            >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
+            outlinedCircle (rewardRadius + inset + 2. * padding) (boundaries.PixelHeight - rewardRadius - inset - 2. * padding) rewardRadius
+            >> (string i |> text largeSize TextAlignment.Center Center (rewardRadius + inset + 2. * padding + 1.<dot>) (boundaries.PixelHeight - rewardRadius - inset - 3. * padding - 1.<dot>))
        | None -> id
     // ability area
     |> drawAbilities boundaries card
     // name
-    |> captionTextCentered boundaries largeSize (``1/2`` + inset + padding) inset ``3/8`` data.Name
+    |> captionTextCentered boundaries largeSize (iconCostDiameter + inset + padding) inset ``3/8`` data.Name
     // faction-kind banner
-    |> captionTextCentered boundaries medSize (``1/2`` + inset + padding) (inset + ``3/8``) (medSize + 2. * padding) $"""{(if transformed then "Transformed " else "")}{data.Faction.Name} {cardKind card}"""
+    |> captionTextCentered boundaries medSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (medSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{data.Faction.Name} {cardKind card}"""
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
     |> (List.init (Option.defaultValue 0u data.Count |> int) id
@@ -138,17 +155,16 @@ let drawPlanet boundaries (card: Planet) (i: ImageState) =
         overlayImage 
             (boundaries.PixelWidth / 2. - w / 2.)
             (inset + 2. * padding + ``1/2``) 
-            w w 
-            i.ScaleCorrection i.Path
+            w w i
     i 
     |> rectangle card.Core.Faction.Primary (lineworkWidth * 2.) (inset - 3.<dot>) (inset - 3.<dot>) (boundaries.PixelWidth - inset + 3.<dot>) (boundaries.PixelHeight - inset + 3.<dot>)
     |> rectangle darkGray lineworkWidth inset inset (boundaries.PixelWidth - inset) (boundaries.PixelHeight - inset)
     // logo
-    |> drawLogo planetIcon
+    |> drawLogo planetImage
     // cost
     |> drawCostAt boundaries card.Core.Cost
-    // clout
-    //|> match card.Core.Clout with
+    // reward
+    //|> match card.Core.Reward with
     //   | Some i -> 
     //        outlinedCircle (``1/8``+ inset + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
     //        >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
@@ -182,11 +198,16 @@ let draw (path: string) card =
     drawable.Draw image
     image.Write path
 
-let outputPath = System.IO.Path.Combine(basePath, CardPath)
+let outputPath = System.IO.Path.Combine(basePath, GeneratedFolder)
 if Directory.Exists outputPath then
     Directory.Delete(outputPath, true)
-    Directory.CreateDirectory outputPath |> ignore
+Directory.CreateDirectory outputPath |> ignore
+
+let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
+for i in errors do
+    printfn $"%s{i}"
+File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
+cards 
 //sampleCards
-SpreadsheetLoader.load @"C:\Users\jtyso\Documents\Aries\Cards.ods"
-|> List.iter (fun s -> draw $"{outputPath}\{name s |> String.filter (fun c -> c <> ' ')}.png" s)
+|> PSeq.iter (fun s -> draw $"{outputPath}\{name s |> String.filter (fun c -> c <> ' ')}.png" s)
 

@@ -39,7 +39,7 @@ let RewardGainCol = "M"
 [<Literal>]
 let ShieldHealthCol = "O"
 [<Literal>]
-let TransformCostCol = "V"
+let UpgradeCostCol = "V"
 [<Literal>]
 let TrashCol = "Z"
 [<Literal>]
@@ -61,6 +61,7 @@ type PartialCard = {
     EnergyGain: string option
     RewardGain: string option
     ShieldHealth: string option
+    UpgradeCost: string option
     FlavorText: string option
 }
 
@@ -68,8 +69,8 @@ type RowKind =
     | Main of PartialCard
     | Ally of PartialCard
     | Trash of PartialCard
-    | TransformMain of PartialCard
-    | TransformAlly of PartialCard
+    | UpgradeMain of PartialCard
+    | UpgradeAlly of PartialCard
 
 let rowToList (row: SpreadsheetXml.TableRow) = 
     row.TableCells
@@ -95,8 +96,8 @@ let createPartial kind ally trash row =
     match kind, ally, trash with
     | "Ally", Some _, _ -> Ally row
     | "Trash", _, Some _ -> Trash row
-    | s, Some _, _ when s.Contains "Transform:" -> { row with Name = String.replace "Transform:" "" row.Name|> String.trimWhiteSpaces } |> TransformAlly 
-    | s, None, _ when s.Contains "Transform:" -> { row with Name = String.replace "Transform:" "" row.Name |> String.trimWhiteSpaces } |> TransformMain 
+    | s, Some _, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name|> String.trimWhiteSpaces } |> UpgradeAlly 
+    | s, None, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name |> String.trimWhiteSpaces } |> UpgradeMain 
     | _ -> Main row
 
 let colToInt (c: string) =
@@ -125,6 +126,7 @@ let tryReadRow (r: string option list) =
         let energyGain = itemAt EnergyGainCol r 
         let rewardGain = itemAt RewardGainCol r 
         let shieldHealth = itemAt ShieldHealthCol r 
+        let upgradeCost = itemAt UpgradeCostCol r 
         let flavorText = itemAt FlavorTextCol r 
         let ally = itemAt AllyCol r 
         let trash = itemAt TrashCol r 
@@ -142,6 +144,7 @@ let tryReadRow (r: string option list) =
             EnergyGain = energyGain
             RewardGain = rewardGain
             ShieldHealth = shieldHealth
+            UpgradeCost = upgradeCost
             FlavorText = flavorText
         }
         return createPartial nameOrRowKind ally trash row
@@ -163,51 +166,40 @@ let rowToAbility (row: PartialCard) =
         CreditGain = tryParseToMeasure row.CreditGain
         StrengthGain = tryParseToMeasure row.StrengthGain
         EnergyGain = tryParseToMeasure row.EnergyGain
-        CloutGain = tryParseToMeasure row.RewardGain } }
+        RewardGain = tryParseToMeasure row.RewardGain } }
 
 let tryCreateCard main ally trash =
     result {
+        let core = {
+            Name = main.Name
+            MainAbility = rowToAbility main
+            Cost = parseCost main.CreditCost main.StrengthCost
+            Reward = main.Reward >>= tryParse<uint>
+            Count = main.CardCount >>= tryParse<uint>
+            Faction = main.Faction
+        }
+        let upgraded = main.UpgradeCost >>= tryParse<uint> |> Option.isSome
         match main.Kind with
         | "Ship" -> 
             return! Ship {
-                Core = {
-                    Name = main.Name
-                    MainAbility = rowToAbility main
-                    Cost = parseCost main.CreditCost main.StrengthCost
-                    Reward = main.Reward >>= tryParse<uint>
-                    Count = main.CardCount >>= tryParse<uint>
-                    Faction = main.Faction
-                }
+                Core = core
                 AllyAbility = ally
                 TrashAbility = trash
-                Transformed = false
+                Upgraded = upgraded
             } |> Ok
         | "Fleet" ->
             return! Fleet {
-                Core = {
-                    Name = main.Name
-                    MainAbility = rowToAbility main
-                    Cost = parseCost main.CreditCost main.StrengthCost
-                    Reward = main.Reward >>= tryParse<uint>
-                    Count = main.CardCount >>= tryParse<uint>
-                    Faction = main.Faction
-                }
+                Core = core
                 AllyAbility = ally
                 TrashAbility = trash
-                Transformed = false
+                Upgraded = upgraded
             } |> Ok
         | "Shield" ->
             let! health = tryParseToMeasure main.ShieldHealth |> Result.requireSome "Health must be provided for shield cards"
             return! Shield {
-                Core = {
-                    Name = main.Name
-                    MainAbility = rowToAbility main
-                    Cost = parseCost main.CreditCost main.StrengthCost
-                    Reward = main.Reward >>= tryParse<uint>
-                    Count = main.CardCount >>= tryParse<uint>
-                    Faction = main.Faction
-                }
+                Core = core
                 Health = health
+                Upgraded = upgraded
             } |> Ok
         //| Some "Planet" ->
         | _ -> return! Error $"No kind provided for {main.Name}: {main} {ally} {trash}"
@@ -223,16 +215,16 @@ let partialRowsToCard (rows: string option list list) =
                     |> Result.requireSome $"Could not read rows {rows}"
         let ally = parsed |> tryChoose (function Ally s -> Some s | _ -> None) |>> rowToAbility
         let trash = parsed |> tryChoose (function Trash s -> Some s | _ -> None) |>> rowToAbility
-        let transform = parsed |> tryChoose (function TransformMain s -> Some s | _ -> None)
-        let transformAlly = parsed |> tryChoose (function TransformAlly s -> Some s | _ -> None) |>> rowToAbility
+        let upgrade = parsed |> tryChoose (function UpgradeMain s -> Some s | _ -> None)
+        let upgradeAlly = parsed |> tryChoose (function UpgradeAlly s -> Some s | _ -> None) |>> rowToAbility
         let! main = tryCreateCard main ally trash
-        let! maybeTransform = transform |> Option.map (fun s -> tryCreateCard s transformAlly None) |> Option.sequenceResult
-        return main, maybeTransform
+        let! maybeUpgrade = upgrade |> Option.map (fun s -> tryCreateCard s upgradeAlly None) |> Option.sequenceResult
+        return main, maybeUpgrade
     }
 
 let readOdt path =
-    use zipToOpen = new FileStream(path, FileMode.Open)
-    use archive = new ZipArchive(zipToOpen, ZipArchiveMode.Update)
+    use zipToOpen = new FileStream(path, FileMode.Open, FileAccess.Read)
+    use archive = new ZipArchive(zipToOpen, ZipArchiveMode.Read)
     let readmeEntry = archive.GetEntry "content.xml"
     use reader = new StreamReader(readmeEntry.Open())
     reader.ReadToEnd ()
@@ -240,15 +232,13 @@ let readOdt path =
 let load (path: string) =
     let opened = if String.endsWith ".xml" path then SpreadsheetXml.Load path else readOdt path |> SpreadsheetXml.Parse
     let cards, errors = 
-        //opened.Body.Spreadsheet.Tables[1].TableRows
-        //|> List.ofArray
-        //|> List.map (rowToList >> List.singleton >> partialRowsToCard)
-        //|> List.append 
+        opened.Body.Spreadsheet.Tables[1].TableRows
+        |> List.ofArray
+        |> List.map (rowToList >> List.singleton >> partialRowsToCard)
+        |> List.append 
             (opened.Body.Spreadsheet.Tables[1].TableRowGroups
             |> List.ofArray
             |> List.map (fun s -> s.TableRows |> List.ofArray |> List.map rowToList2 |> partialRowsToCard))
             |> Result.partition
-    for i in errors |> List.collect id do
-        printfn $"%s{i}"
     let cards, maybeCards = cards |> List.unzip
-    maybeCards |> List.choose id |> List.append cards 
+    maybeCards |> List.choose id |> List.append cards, errors |> List.collect id

@@ -15,11 +15,12 @@ type hp = strength
 type energy
 
 [<Measure>]
-type clout
+type reward
 
 type Icon = {
     Path: string 
     ScaleCorrection: float 
+    Opacity: float
 }
 
 type FactionData = {
@@ -33,14 +34,14 @@ type AbilityMetadata = {
     CreditGain: uint<credit> option
     StrengthGain: uint<strength> option
     EnergyGain: uint<energy> option
-    CloutGain: uint<clout> option
+    RewardGain: uint<reward> option
 }
 
 let defaultMetadata = { 
     CreditGain = None
     StrengthGain = None
     EnergyGain = None
-    CloutGain = None
+    RewardGain = None
 }
 
 type Ability = {
@@ -52,6 +53,7 @@ type Ability = {
 type CardCost =
     | CreditOnly of uint<credit>
     | StrengthOnly of uint<strength>
+    | CreditOrStrength of credit: uint<credit> * strength: uint<strength>
     | CreditAndStrength of credit: uint<credit> * strength: uint<strength>
 
 // it's card-core parkour
@@ -68,20 +70,21 @@ type FleetOrShip = {
     Core: CardCore
     AllyAbility: Ability option
     TrashAbility: Ability option
-    Transformed: bool
+    Upgraded: bool
 }
 
 type Shield = {
     Core: CardCore
     Health: uint<hp>
+    Upgraded: bool
 }
 
-type CloutSchedule = { First: uint<clout>; Second: uint<clout>; Third: uint<clout> }
+type RewardSchedule = { First: uint<reward>; Second: uint<reward>; Third: uint<reward> }
 
 type Planet = {
     Core: CardCore
     Health: uint<hp>
-    CloutSchedule: CloutSchedule
+    RewardSchedule: RewardSchedule
 }
 
 type Card = 
@@ -106,36 +109,114 @@ let name =
 
 // data
 
-let shipIcon = {
+let shipImage = {
     Path = @"Ship.webp"
     ScaleCorrection = 0.98
+    Opacity = 1.
 }
 
-let fleetIcon = {
+let fleetImage = {
     Path = @"FleetLogo.png"
     ScaleCorrection = 0.98
+    Opacity = 1.
 }
 
-let shieldIcon = {
-    Path = @"ShieldOutlineLogo.png"
+let shieldImage = {
+    Path = @"ShieldOutlineLogoUpdated.png"
     ScaleCorrection = 0.98
+    Opacity = 0.8
 }
 
-let trashIcon = {
+let trashImage = {
     Path = @"icons8-trash-can-50.png"
     ScaleCorrection = 0.85
+    Opacity = 1.
 }
 
-let planetIcon = {
+let planetImage = {
     Path = @"PlanetGrayIcon.png"
     ScaleCorrection = 0.98
+    Opacity = 1.
 }
 
+let relicImage = {
+    Path = @"RelicImage.png"
+    ScaleCorrection = 0.98
+    Opacity = 0.8
+}
+
+let spaceMonster1Image = {
+    Path = @"SpaceMonster1.png"
+    ScaleCorrection = 0.98
+    Opacity = 0.8
+}
+
+let spaceMonster2Image = {
+    Path = @"SpaceMonster2.png"
+    ScaleCorrection = 0.98
+    Opacity = 0.8
+}
+
+let spaceMonster3Image = {
+    Path = @"SpaceMonster3.png"
+    ScaleCorrection = 0.98
+    Opacity = 0.8
+}
+
+let spaceMonster4Image = {
+    Path = @"SpaceMonster4.png"
+    ScaleCorrection = 0.98
+    Opacity = 0.8
+}
+
+let spaceMonster5Image = {
+    Path = @"SpaceMonster5.png"
+    ScaleCorrection = 0.98
+    Opacity = 0.8
+}
+
+let spaceMonsters = [
+    spaceMonster1Image
+    spaceMonster2Image
+    spaceMonster3Image
+    spaceMonster4Image
+    spaceMonster5Image
+]
+
 let unaligned = {
-    Primary = MagickColor(0x7Fuy, 0x7Fuy, 0x7Fuy)
+    Primary = MagickColor(0xAFuy, 0xAFuy, 0xAFuy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = None
     Name = "Unaligned"
+}
+
+let mercenary = {
+    Primary = MagickColor(0x5Fuy, 0x68uy, 0x7Auy)
+    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Icon = Some {
+        Path = @"MercenaryLogoUpdated.png"
+        ScaleCorrection = 1.0
+        Opacity = 1.
+    }
+    Name = "Mercenary"
+}
+
+let monster = {
+    Primary = MagickColor(0x6Fuy, 0x6Fuy, 0x7Auy)
+    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Icon = None
+    Name = "Monster"
+}
+
+let relic = {
+    Primary = MagickColors.Purple
+    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Icon = Some {
+        Path = @"RelicLogo.webp"
+        ScaleCorrection = 1.0
+        Opacity = 1.
+    }
+    Name = "Relic"
 }
 
 let imperium = {
@@ -144,6 +225,7 @@ let imperium = {
     Icon = Some {
         Path = @"RustRedImperiumLogoUpdated.png"
         ScaleCorrection = 1.0
+        Opacity = 1.
     }
     Name = "Imperium"
 }
@@ -154,6 +236,7 @@ let stellarion = {
     Icon = Some {
         Path = @"StellarionLogo.png"
         ScaleCorrection = 1.0
+        Opacity = 1.
     }
     Name = "Stellarion"
 }
@@ -164,6 +247,7 @@ let botBrigade = {
     Icon = Some {
         Path = @"BattleBotLogoUpdated.png"
         ScaleCorrection = 0.85
+        Opacity = 1.
     }
     Name = "Bot Brigade"
 }
@@ -174,11 +258,12 @@ let rogueAlliance = {
     Icon = Some {
         Path = @"RogueAllianceLogo.webp"
         ScaleCorrection = 1.0
+        Opacity = 1.
     }
     Name = "Rogue Alliance"
 }
 
-let sparky = Ship {
+let metallicHydrogenSupplier = Ship {
     Core = {
         Name = "Metallic Hydrogen Supplier"
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
@@ -189,7 +274,7 @@ let sparky = Ship {
     }
     AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
     TrashAbility = None
-    Transformed = false
+    Upgraded = true
 }
 
 let imperialFighter = Ship {
@@ -203,7 +288,7 @@ let imperialFighter = Ship {
     }
     AllyAbility = None
     TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
-    Transformed = false
+    Upgraded = false
 }
 
 let ``343rd Batallion`` = Fleet {
@@ -217,7 +302,7 @@ let ``343rd Batallion`` = Fleet {
     }
     AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
     TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
-    Transformed = false
+    Upgraded = true
 }
 
 let bigCredit = Ship {
@@ -231,21 +316,21 @@ let bigCredit = Ship {
     }
     AllyAbility = None
     TrashAbility = None
-    Transformed = false
+    Upgraded = false
 }
 
 let bigLaser = Ship {
     Core = {
         Name = "Big Laser"
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
-        Cost = Some <| CreditOnly 22u<credit>
+        Cost = Some <| CreditOrStrength (88u<credit>, 88u<strength>)
         Reward = Some 1u
         Count = None
         Faction = unaligned
     }
     AllyAbility = None
     TrashAbility = None
-    Transformed = false
+    Upgraded = false
 }
 
 let refractiveShield = Shield {
@@ -258,7 +343,7 @@ let refractiveShield = Shield {
                 CreditGain = Some 1u<credit>
                 StrengthGain = Some 1u<strength>
                 EnergyGain = Some 1u<energy>
-                CloutGain = Some 1u<clout>
+                RewardGain = Some 1u<reward>
         } }
         Cost = Some <| CreditAndStrength (88u<credit>, 88u<strength>)
         Reward = Some 88u
@@ -266,6 +351,7 @@ let refractiveShield = Shield {
         Faction = stellarion
     }
     Health = 9u<hp>
+    Upgraded = true
 }
 
 let planet = Planet {
@@ -277,10 +363,9 @@ let planet = Planet {
         Count = Some 1u
         Faction = unaligned
     }
-    Health = 3u<hp>
-    CloutSchedule = { First = 3u<clout>; Second = 2u<clout>; Third = 1u<clout> }
+    Health = 8u<hp>
+    RewardSchedule = { First = 3u<reward>; Second = 2u<reward>; Third = 1u<reward> }
 }
 
 let sampleCards = 
-    [planet]
-    //[sparky; bigCredit; bigLaser; imperialFighter; ``343rd Batallion``; refractiveShield]
+    [planet; metallicHydrogenSupplier; bigCredit; bigLaser; imperialFighter; ``343rd Batallion``; refractiveShield]

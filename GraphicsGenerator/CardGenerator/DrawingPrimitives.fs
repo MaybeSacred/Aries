@@ -3,6 +3,7 @@
 open ImageMagick
 open System.IO
 open System
+open Types
 
 [<Measure>]
 type dot
@@ -29,16 +30,16 @@ type TextVerticalAlignment = Top | Center | Bottom
 
 let colorWithOpacity (color: IMagickColor<byte>) opacity = MagickColor(color.R, color.G, color.B, opacity)
 
-let darkGray = MagickColor(0x18uy, 0x21uy, 0x21uy)
+let darkGray = MagickColor(0x14uy, 0x1Duy, 0x1Duy)
 let medGray = MagickColor(0x46uy, 0x58uy, 0x58uy)
-let black = MagickColor(0x8uy, 0x8uy, 0x8uy)
+let black = MagickColor(0x08uy, 0x08uy, 0x08uy)
 let creditGold = colorWithOpacity MagickColors.Gold 0x60uy
 let strengthRed = colorWithOpacity MagickColors.Red 0x60uy
 let shieldBlue = colorWithOpacity MagickColors.CornflowerBlue 0x58uy
 let energyGreen = colorWithOpacity MagickColors.LawnGreen 0x50uy
 
 [<Literal>]
-let dpi = 144.<dot/inch>
+let dpi = 300.<dot/inch>
 
 type Boundaries = {
     Width: float<inch>
@@ -76,31 +77,6 @@ let cardBoundaries = fromDimensions (2.<inch> + 7.<inch>/16.) (3.<inch> + 7.<inc
 
 let planetBoundaries = fromDimensions (5.<inch>) (3.<inch>)
 
-[<Literal>]
-let inset = 4.<dot>
-[<Literal>]
-let circleSize = 9.<dot>
-[<Literal>]
-let smallSize = 12.<dot>
-[<Literal>]
-let medSize = 16.<dot>
-[<Literal>]
-let largeSize = 20.<dot>
-[<Literal>]
-let extraLargeSize = 24.<dot>
-[<Literal>]
-let extraExtraLargeSize = 40.<dot>
-[<Literal>]
-let lineworkWidth = 2.<dot>
-[<Literal>]
-let textPadding = 6.<dot>
-[<Literal>]
-let abilityIconPadding = 4.<dot>
-[<Literal>]
-let padding = 2.<dot>
-[<Literal>]
-let one = 1.<dot>
-
 let ``1/16`` = (1.<inch> / 16.) * dpi
 let ``3/32`` = (3.<inch> / 32.) * dpi
 let ``1/8`` = (1.<inch> / 8.) * dpi
@@ -112,10 +88,39 @@ let ``3/8`` = (3.<inch> / 8.) * dpi
 let ``1/2`` = dpi * 1.<inch> / 2.
 
 [<Literal>]
-let ImagesPath = @"Images"
+let inset = 10.<dot>
+[<Literal>]
+let circleSize = 18.<dot>
+[<Literal>]
+let smallSize = 24.<dot>
+[<Literal>]
+let medSize = 32.<dot>
+[<Literal>]
+let largeSize = 40.<dot>
+[<Literal>]
+let extraLargeSize = 48.<dot>
+[<Literal>]
+let extraExtraLargeSize = 64.<dot>
+[<Literal>]
+let lineworkWidth = 4.<dot>
+[<Literal>]
+let textPadding = 12.<dot>
+[<Literal>]
+let abilityIconPadding = 8.<dot>
+[<Literal>]
+let padding = 4.<dot>
+/// smallest unit we care about
+[<Literal>]
+let quanta = 2.<dot>
 
 [<Literal>]
-let CardPath = @"Cards"
+let ImagesFolder = @"Images"
+
+[<Literal>]
+let ProductionCardFolder = @"Cards"
+
+[<Literal>]
+let GeneratedFolder = @"Generated"
 
 let basePath =
     Environment.GetCommandLineArgs() 
@@ -176,15 +181,19 @@ let line color (width: float<dot>) (startX: float<dot>) (startY: float<dot>) (en
      .PopGraphicContext()
     i
 
-let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (scale: float) (path: string) (i: ImageState) =
+let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (icon: Icon) (i: ImageState) =
     let settings = MagickReadSettings()
     //settings.FillColor <- black
     settings.BackgroundColor <- MagickColors.Transparent
-    let scaledHalfWidth, scaledHalfHeight = int <| scale * width / 2., int <| scale * height / 2.
+    let scaledHalfWidth, scaledHalfHeight = int <| icon.ScaleCorrection * width / 2., int <| icon.ScaleCorrection * height / 2.
     let size = MagickGeometry(scaledHalfWidth * 2, scaledHalfHeight * 2)
-    use ii = new MagickImage(Path.Combine(basePath, ImagesPath, path), settings)
+    use ii = new MagickImage(Path.Combine(basePath, ImagesFolder, icon.Path), settings)
+    ii.Evaluate(Channels.Alpha, EvaluateOperator.Multiply, icon.Opacity)
     ii.Resize(size) // lol the calcs aren't wrong, but scaled images appear 1 pixel too far to the top left corner
-    i.Image.Composite(ii, int startX + (if scale <> 1. then (int (width / 2.) - scaledHalfWidth + 1) else 0), int startY + (if scale <> 1. then (int (height / 2.) - scaledHalfHeight + 1) else 0), CompositeOperator.Over)
+    i.Image.Composite(ii, 
+        int startX + (if icon.ScaleCorrection <> 1. then (int (width / 2.) - scaledHalfWidth + 1) else 0), 
+        int startY + (if icon.ScaleCorrection <> 1. then (int (height / 2.) - scaledHalfHeight + 1) else 0), 
+        CompositeOperator.Over)
     i
 
 let captionText (size: float<dot>) (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (text: string) (i: ImageState) =
