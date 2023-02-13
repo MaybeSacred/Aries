@@ -75,15 +75,20 @@ type RowKind =
 let rowToList (row: SpreadsheetXml.TableRow) = 
     row.TableCells
     |> List.ofArray
-    |> List.map (fun c -> c.P |> Option.bind (fun p -> p.String))
+    |> List.collect (fun c -> 
+        match c.NumberColumnsRepeated with
+        | Some r -> c.P |> Option.bind (fun p -> p.String) |> konst |> List.init r
+        | None -> c.P |> Option.bind (fun p -> p.String) |> List.singleton)
 
 let rowToList2 (row: SpreadsheetXml.TableRow2) = 
     row.TableCells
     |> List.ofArray
-    |> List.map (fun c -> c.P |> Option.bind (fun p -> p.String))
+    |> List.collect (fun c -> 
+        match c.NumberColumnsRepeated with
+        | Some r -> c.P |> Option.bind (fun p -> p.String) |> konst |> List.init r
+        | None -> c.P |> Option.bind (fun p -> p.String) |> List.singleton)
 
 let codeToFaction s =
-    // TODO: space monsters
     match s with
     | "U" | "P" | "R" | "SM" | "M" -> Some Types.unaligned
     | "BB" -> Some Types.botBrigade
@@ -152,11 +157,13 @@ let tryReadRow (r: string option list) =
 
 let tryParseToMeasure<[<Measure>] 'a> = Option.bind tryParse<uint> >> Option.map LanguagePrimitives.UInt32WithMeasure<'a>
 
-let parseCost c s =
-    match tryParseToMeasure<credit> c, tryParseToMeasure<strength> s with
-    | Some c, None -> c |> CreditOnly |> Some
-    | None, Some s -> s |> StrengthOnly |> Some
-    | Some c, Some s -> CreditAndStrength (c, s) |> Some
+let parseCost kind c s =
+    match kind, tryParseToMeasure<credit> c, tryParseToMeasure<strength> s with
+    | _, Some c, None -> c |> CreditOnly |> Some
+    | _, None, Some s -> s |> StrengthOnly |> Some
+    // hack: only Mercenary can be either/or right now
+    | "Mercenary", Some c, Some s -> CreditOrStrength (c, s) |> Some
+    | _, Some c, Some s -> CreditAndStrength (c, s) |> Some
     | _ -> None
 
 let rowToAbility (row: PartialCard) = 
@@ -173,7 +180,7 @@ let tryCreateCard main ally trash =
         let core = {
             Name = main.Name
             MainAbility = rowToAbility main
-            Cost = parseCost main.CreditCost main.StrengthCost
+            Cost = parseCost main.Kind main.CreditCost main.StrengthCost
             Reward = main.Reward >>= tryParse<uint>
             Count = main.CardCount >>= tryParse<uint>
             Faction = main.Faction
@@ -201,7 +208,19 @@ let tryCreateCard main ally trash =
                 Health = health
                 Upgraded = upgraded
             } |> Ok
-        //| Some "Planet" ->
+        | "Mercenary" ->
+            return! Mercenary {
+                Core = core
+            } |> Ok
+        | "Monster" ->
+            return! Monster {
+                Core = core
+            } |> Ok
+        | "Relic" ->
+            return! Relic {
+                Core = core
+            } |> Ok
+        | "Planet"
         | _ -> return! Error $"No kind provided for {main.Name}: {main} {ally} {trash}"
     }
 
@@ -239,6 +258,6 @@ let load (path: string) =
             (opened.Body.Spreadsheet.Tables[1].TableRowGroups
             |> List.ofArray
             |> List.map (fun s -> s.TableRows |> List.ofArray |> List.map rowToList2 |> partialRowsToCard))
-            |> Result.partition
+        |> Result.partition
     let cards, maybeCards = cards |> List.unzip
     maybeCards |> List.choose id |> List.append cards, errors |> List.collect id

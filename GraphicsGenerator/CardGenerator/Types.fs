@@ -73,6 +73,18 @@ type FleetOrShip = {
     Upgraded: bool
 }
 
+type Mercenary = {
+    Core: CardCore
+}
+
+type Monster = {
+    Core: CardCore
+}
+
+type Relic = {
+    Core: CardCore
+}
+
 type Shield = {
     Core: CardCore
     Health: uint<hp>
@@ -92,6 +104,9 @@ type Card =
     | Ship of FleetOrShip
     | Fleet of FleetOrShip
     | Planet of Planet
+    | Mercenary of Mercenary
+    | Monster of Monster
+    | Relic of Relic
 
 let cardKind =
     function  
@@ -99,13 +114,22 @@ let cardKind =
     | Ship _ -> "Ship"
     | Fleet _ -> "Fleet"
     | Planet _ -> "Planet"
+    | Mercenary _ -> "Mercenary"
+    | Monster _ -> "Monster"
+    | Relic _ -> "Relic"
 
-let name =
-    function  
-    | Shield { Core = { Name = name } } 
-    | Ship { Core = { Name = name } } 
-    | Fleet { Core = { Name = name } } 
-    | Planet { Core = { Name = name } } -> name
+let core =
+    function
+    | Shield { Core = c } 
+    | Ship { Core = c } 
+    | Fleet { Core = c } 
+    | Planet { Core = c }
+    | Mercenary { Core = c }
+    | Monster { Core = c }
+    | Relic { Core = c }
+        -> c
+
+let name c = core c |> fun s -> s.Name
 
 // data
 

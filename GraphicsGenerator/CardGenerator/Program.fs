@@ -53,7 +53,11 @@ let drawAbilities boundaries card (i: ImageState) =
         | Ship { Core = { MainAbility = main; Faction = faction }; AllyAbility = ally; TrashAbility = scrap } 
         | Fleet { Core = { MainAbility = main; Faction = faction }; AllyAbility = ally; TrashAbility = scrap } ->
             main, ally, scrap, faction
-        | Shield { Core = { MainAbility = main; Faction = faction } } ->
+        | Shield { Core = { MainAbility = main; Faction = faction } }
+        | Mercenary { Core = { MainAbility = main; Faction = faction } }
+        | Monster { Core = { MainAbility = main; Faction = faction } }
+        | Relic { Core = { MainAbility = main; Faction = faction } } 
+        | Planet { Core = { MainAbility = main; Faction = faction } } ->
             main, None, None, faction
     i 
     |> line darkGray lineworkWidth inset cardMidpoint (boundaries.PixelWidth - inset) cardMidpoint
@@ -105,6 +109,10 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
             core, upgraded
         | Shield { Core = core; Upgraded = upgraded } ->
             core, upgraded
+        | Mercenary { Core = core }
+        | Monster { Core = core }
+        | Relic { Core = core } ->
+            core, false
         | Planet _ -> invalidOp "This function does not support drawing planets"
 
     let drawLogo (i: Icon) =
@@ -129,6 +137,9 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
        | Shield s -> 
         drawLogo shieldImage
         >> drawShieldAbilities s
+       | Mercenary _ -> drawLogo fleetImage
+       | Monster _ -> drawLogo fleetImage
+       | Relic _ -> drawLogo fleetImage
     // cost
     |> drawCostAt boundaries data.Cost
     // reward
@@ -204,8 +215,6 @@ if Directory.Exists outputPath then
 Directory.CreateDirectory outputPath |> ignore
 
 let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
-for i in errors do
-    printfn $"%s{i}"
 File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
 cards 
 //sampleCards
