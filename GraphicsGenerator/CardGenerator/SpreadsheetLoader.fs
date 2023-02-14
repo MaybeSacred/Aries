@@ -6,9 +6,10 @@ open FSharp.Data
 open FSharpPlus
 open FSharpPlus.Data
 open FsToolkit.ErrorHandling
-open Types
 open System.IO
 open System.IO.Compression
+
+open Types
 
 type SpreadsheetXml = XmlProvider<"""../../content.xml""">
 
@@ -45,7 +46,7 @@ let TrashCol = "Z"
 [<Literal>]
 let AllyCol = "AA"
 [<Literal>]
-let FlavorTextCol = "AF"
+let FlavorTextCol = "AG"
 
 type PartialCard = {
     Name: string
@@ -61,7 +62,7 @@ type PartialCard = {
     EnergyGain: string option
     RewardGain: string option
     ShieldHealth: string option
-    UpgradeCost: string option
+    UpgradeCost: uint option
     FlavorText: string option
 }
 
@@ -97,19 +98,20 @@ let codeToFaction s =
     | "RA" -> Some Types.rogueAlliance
     | _ -> None
 
-let createPartial kind ally trash row =
-    match kind, ally, trash with
-    | "Ally", Some _, _ -> Ally row
-    | "Trash", _, Some _ -> Trash row
-    | s, Some _, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name|> String.trimWhiteSpaces } |> UpgradeAlly 
-    | s, None, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name |> String.trimWhiteSpaces } |> UpgradeMain 
+let createPartial kind upgrade ally trash row =
+    match kind, upgrade, ally, trash with
+    | "Ally", None, Some _, _ -> Ally row
+    | "Trash", None, _, Some _ -> Trash row
+    | s, None, Some _, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name |> String.trimWhiteSpaces } |> UpgradeAlly 
+    | s, Some _, None, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name |> String.trimWhiteSpaces } |> UpgradeMain 
     | _ -> Main row
 
 let colToInt (c: string) =
-    let charToInt ch pos = int (Char.ConvertToUtf32 (c, pos)) - 65
+    let charToInt (ch: string) pos = int (Char.ConvertToUtf32 (ch, pos)) - 64
     match c with
     | c when c.Length = 1 -> charToInt c 0
     | c when c.Length = 2 -> (charToInt c 0) * 26 + charToInt c 1
+    |> fun i -> i - 1
 
 let itemAt col (r: string option list) =
     List.tryItem (colToInt col) r
@@ -117,11 +119,12 @@ let itemAt col (r: string option list) =
     |> Option.map String.trimWhiteSpaces
 
 let tryReadRow (r: string option list) =
+    let hasValue = tryParse<uint> >> Option.filter (fun s -> s > 0u)
     result {
-        let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row {r}"
-        let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row {r}"
-        let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row {r}"
-        let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row {r}"
+        let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{r}"
+        let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{r}"
+        let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{r}"
+        let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row %A{r}"
         let cardCount = itemAt CardCountCol r 
         let creditCost = itemAt CreditCostCol r 
         let strengthCost = itemAt StrengthCostCol r 
@@ -131,10 +134,10 @@ let tryReadRow (r: string option list) =
         let energyGain = itemAt EnergyGainCol r 
         let rewardGain = itemAt RewardGainCol r 
         let shieldHealth = itemAt ShieldHealthCol r 
-        let upgradeCost = itemAt UpgradeCostCol r 
+        let upgradeCost = itemAt UpgradeCostCol r >>= hasValue
         let flavorText = itemAt FlavorTextCol r 
-        let ally = itemAt AllyCol r 
-        let trash = itemAt TrashCol r 
+        let ally = itemAt AllyCol r >>= hasValue
+        let trash = itemAt TrashCol r >>= hasValue
         let row = {
             Name = nameOrRowKind
             Faction = faction
@@ -152,7 +155,7 @@ let tryReadRow (r: string option list) =
             UpgradeCost = upgradeCost
             FlavorText = flavorText
         }
-        return createPartial nameOrRowKind ally trash row
+        return createPartial nameOrRowKind upgradeCost ally trash row
     }
 
 let tryParseToMeasure<[<Measure>] 'a> = Option.bind tryParse<uint> >> Option.map LanguagePrimitives.UInt32WithMeasure<'a>
@@ -185,7 +188,7 @@ let tryCreateCard main ally trash =
             Count = main.CardCount >>= tryParse<uint>
             Faction = main.Faction
         }
-        let upgraded = main.UpgradeCost >>= tryParse<uint> |> Option.isSome
+        let upgraded = main.UpgradeCost |> Option.isSome
         match main.Kind with
         | "Ship" -> 
             return! Ship {
@@ -221,7 +224,7 @@ let tryCreateCard main ally trash =
                 Core = core
             } |> Ok
         | "Planet"
-        | _ -> return! Error $"No kind provided for {main.Name}: {main} {ally} {trash}"
+        | _ -> return! Error $"Unsupported row {main.Name}: %A{main} %A{ally} %A{trash}"
     }
 
 let partialRowsToCard (rows: string option list list) =
@@ -231,13 +234,13 @@ let partialRowsToCard (rows: string option list list) =
         let! main = parsed 
                     |> List.choose (function Main s -> Some s | _ -> None) 
                     |> List.tryExactlyOne 
-                    |> Result.requireSome $"Could not read rows {rows}"
+                    |> Result.requireSome $"Could not read rows %A{parsed}: %A{rows}"
         let ally = parsed |> tryChoose (function Ally s -> Some s | _ -> None) |>> rowToAbility
         let trash = parsed |> tryChoose (function Trash s -> Some s | _ -> None) |>> rowToAbility
         let upgrade = parsed |> tryChoose (function UpgradeMain s -> Some s | _ -> None)
         let upgradeAlly = parsed |> tryChoose (function UpgradeAlly s -> Some s | _ -> None) |>> rowToAbility
-        let! main = tryCreateCard main ally trash
         let! maybeUpgrade = upgrade |> Option.map (fun s -> tryCreateCard s upgradeAlly None) |> Option.sequenceResult
+        let! main = tryCreateCard main ally trash
         return main, maybeUpgrade
     }
 
@@ -253,11 +256,12 @@ let load (path: string) =
     let cards, errors = 
         opened.Body.Spreadsheet.Tables[1].TableRows
         |> List.ofArray
-        |> List.map (rowToList >> List.singleton >> partialRowsToCard)
+        |> List.map (rowToList >> List.singleton)
         |> List.append 
             (opened.Body.Spreadsheet.Tables[1].TableRowGroups
             |> List.ofArray
-            |> List.map (fun s -> s.TableRows |> List.ofArray |> List.map rowToList2 |> partialRowsToCard))
+            |> List.map (fun s -> s.TableRows |> List.ofArray |> List.map rowToList2))
+        |> List.map (fun rs -> partialRowsToCard rs )//|> Result.mapError (fun ))
         |> Result.partition
     let cards, maybeCards = cards |> List.unzip
     maybeCards |> List.choose id |> List.append cards, errors |> List.collect id
