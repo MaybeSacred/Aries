@@ -48,6 +48,8 @@ let AllyCol = "AA"
 [<Literal>]
 let FlavorTextCol = "AG"
 
+type ParsedRow = string option list
+
 type PartialCard = {
     Name: string
     Faction: FactionData
@@ -113,18 +115,22 @@ let colToInt (c: string) =
     | c when c.Length = 2 -> (charToInt c 0) * 26 + charToInt c 1
     |> fun i -> i - 1
 
-let itemAt col (r: string option list) =
+let toDebugRow (r: ParsedRow) =
+    List.init r.Length (fun i -> if i >= 26 then $"A{Char.ConvertFromUtf32 (i - 26 + 65)}" else Char.ConvertFromUtf32 (i + 65))
+    |> flip List.zip r
+
+let itemAt col (r: ParsedRow) =
     List.tryItem (colToInt col) r
     |> Option.bind id
     |> Option.map String.trimWhiteSpaces
 
-let tryReadRow (r: string option list) =
+let tryReadRow (r: ParsedRow) =
     let hasValue = tryParse<uint> >> Option.filter (fun s -> s > 0u)
     result {
-        let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{r}"
-        let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{r}"
-        let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{r}"
-        let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row %A{r}"
+        let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{toDebugRow r}"
+        let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{toDebugRow r}"
+        let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{toDebugRow r}"
+        let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row %A{toDebugRow r}"
         let cardCount = itemAt CardCountCol r 
         let creditCost = itemAt CreditCostCol r 
         let strengthCost = itemAt StrengthCostCol r 
@@ -227,7 +233,7 @@ let tryCreateCard main ally trash =
         | _ -> return! Error $"Unsupported row {main.Name}: %A{main} %A{ally} %A{trash}"
     }
 
-let partialRowsToCard (rows: string option list list) =
+let partialRowsToCard (rows: ParsedRow list) =
     let tryChoose chooser r = r |> List.choose chooser |> List.tryHead
     validation {
         let! parsed = rows |> List.traverseResultA tryReadRow
@@ -261,7 +267,7 @@ let load (path: string) =
             (opened.Body.Spreadsheet.Tables[1].TableRowGroups
             |> List.ofArray
             |> List.map (fun s -> s.TableRows |> List.ofArray |> List.map rowToList2))
-        |> List.map (fun rs -> partialRowsToCard rs )//|> Result.mapError (fun ))
+        |> List.map (List.map (List.take (colToInt FlavorTextCol + 1)) >> partialRowsToCard)
         |> Result.partition
     let cards, maybeCards = cards |> List.unzip
     maybeCards |> List.choose id |> List.append cards, errors |> List.collect id
