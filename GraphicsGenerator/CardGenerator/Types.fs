@@ -17,7 +17,7 @@ type energy
 [<Measure>]
 type reward
 
-type Icon = {
+type ImageData = {
     Path: string 
     ScaleCorrection: float 
     Opacity: float
@@ -26,7 +26,7 @@ type Icon = {
 type FactionData = {
     Primary: MagickColor
     Secondary: MagickColor
-    Icon: Icon option
+    Icon: ImageData option
     Name: string
 }
 
@@ -64,6 +64,7 @@ type CardCore = {
     Count: uint option
     Reward: uint option
     Faction: FactionData
+    FlavorText: string option
 }
 
 type FleetOrShip = {
@@ -169,37 +170,43 @@ let relicImage = {
     Opacity = 0.8
 }
 
+let spaceMercenaryImage = {
+    Path = @"SpaceMercenaryUpdated.webp"
+    ScaleCorrection = 0.98
+    Opacity = 0.8
+}
+
 let spaceMonster1Image = {
-    Path = @"SpaceMonster1.png"
+    Path = @"SpaceMonster1.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
 let spaceMonster2Image = {
-    Path = @"SpaceMonster2.png"
+    Path = @"SpaceMonster2.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
 let spaceMonster3Image = {
-    Path = @"SpaceMonster3.png"
+    Path = @"SpaceMonster3.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
 let spaceMonster4Image = {
-    Path = @"SpaceMonster4.png"
+    Path = @"SpaceMonster4.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
 let spaceMonster5Image = {
-    Path = @"SpaceMonster5.png"
+    Path = @"SpaceMonster5.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
-let spaceMonsters = [
+let spaceMonsterIcons = [
     spaceMonster1Image
     spaceMonster2Image
     spaceMonster3Image
@@ -228,7 +235,11 @@ let mercenary = {
 let monster = {
     Primary = MagickColor(0x6Fuy, 0x6Fuy, 0x7Auy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
-    Icon = None
+    Icon = Some {
+        Path = @"MonsterLogoUpdated.webp"
+        ScaleCorrection = 1.0
+        Opacity = 1.
+    }
     Name = "Monster"
 }
 
@@ -295,6 +306,7 @@ let metallicHydrogenSupplier = Ship {
         Reward = Some 88u
         Count = Some 3u
         Faction = rogueAlliance
+        FlavorText = Some "Flavor text"
     }
     AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
     TrashAbility = None
@@ -309,6 +321,7 @@ let imperialFighter = Ship {
         Reward = Some 88u
         Count = Some 3u
         Faction = imperium
+        FlavorText = Some "Flavor text"
     }
     AllyAbility = None
     TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
@@ -323,6 +336,7 @@ let ``343rd Batallion`` = Fleet {
         Reward = Some 88u
         Count = Some 3u
         Faction = botBrigade
+        FlavorText = Some "Flavor text"
     }
     AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
     TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
@@ -337,6 +351,7 @@ let bigCredit = Ship {
         Reward = Some 1u
         Count = None
         Faction = unaligned
+        FlavorText = Some "Flavor text"
     }
     AllyAbility = None
     TrashAbility = None
@@ -351,6 +366,7 @@ let bigLaser = Ship {
         Reward = Some 1u
         Count = None
         Faction = unaligned
+        FlavorText = Some "Flavor text"
     }
     AllyAbility = None
     TrashAbility = None
@@ -364,15 +380,16 @@ let refractiveShield = Shield {
             Text = "Draw 1 card. Some really long text to see what happens";
             IsInfinite = false
             Metadata = { 
-                CreditGain = Some 1u<credit>
-                StrengthGain = Some 1u<strength>
-                EnergyGain = Some 1u<energy>
-                RewardGain = Some 1u<reward>
+                CreditGain = Some 8u<credit>
+                StrengthGain = Some 8u<strength>
+                EnergyGain = Some 8u<energy>
+                RewardGain = Some 8u<reward>
         } }
         Cost = Some <| CreditAndStrength (88u<credit>, 88u<strength>)
         Reward = Some 88u
         Count = Some 3u
         Faction = stellarion
+        FlavorText = Some "Flavor text"
     }
     Health = 9u<hp>
     Upgraded = true
@@ -386,6 +403,7 @@ let planet = Planet {
         Reward = Some 88u
         Count = Some 1u
         Faction = unaligned
+        FlavorText = Some "Flavor text"
     }
     Health = 8u<hp>
     RewardSchedule = { First = 3u<reward>; Second = 2u<reward>; Third = 1u<reward> }

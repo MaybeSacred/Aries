@@ -4,18 +4,22 @@ open System
 open System.IO
 open Microsoft.FSharp.Collections
 open FSharp.Collections.ParallelSeq
+open FSharpPlus
 
 open Types
 open DrawingPrimitives
 
+// card
 let creditStrengthDualCostOffset = ``1/16`` + 2.<dot>
 let cardMidpoint = 2.<inch> * dpi
 let cardBottomPoint = cardBoundaries.Height * dpi - 2. * (``1/8`` + inset + quanta)
-let planetVerticalMidpoint = 2.<inch> * dpi
-let abilityHalfPoint = (cardBottomPoint - cardMidpoint) / 2.
-let abilityThirdPoint = (cardBottomPoint - cardMidpoint) / 3.
-let abilityTwoThirdPoint = (cardBottomPoint - cardMidpoint) * 2. / 3.
+
 let topTextBottom = inset + ``3/8`` + medSize + 2. * padding
+
+// planet
+let planetVerticalMidpoint = 2.5<inch> * dpi
+let planetAbilityTopPoint = 1.5<inch> * dpi
+
 let iconCostRadius = ``3/16``
 let iconCostDiameter = 2. * iconCostRadius
 let iconCostYOffset = iconCostRadius + inset + padding + quanta
@@ -38,16 +42,18 @@ let drawShieldAbilities (shield: Shield) (i: ImageState) =
         | None -> id)
     |> List.iter (fun s -> s i |> ignore)
     i
-
-let drawAbilities boundaries card (i: ImageState) =
+    // TODO: remove inset to startX and width here, and add them to parameters
+let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bottom: float<dot>) card (i: ImageState) =
     let drawMainTextAtHeight height text =
-        captionTextCentered boundaries medSize (inset + textPadding) (cardMidpoint + padding) (height - 2. * padding) text
-    let drawAbility top (height: float<dot>) icon text =
-        captionText medSize (inset + 2. * ``5/32`` + textPadding) (cardMidpoint + top + padding) (boundaries.PixelWidth - 2. * (inset + textPadding + ``5/32``)) (height - 2. * padding) text
-        >> line darkGray lineworkWidth inset (cardMidpoint + top) (boundaries.PixelWidth - inset) (cardMidpoint + top)
-        >> outlinedCircle (``5/32`` + inset + abilityIconPadding) (cardMidpoint + top + height / 2.) ``5/32``
-        >> overlayImage (inset + abilityIconPadding) (cardMidpoint + top + (height / 2. - ``5/32``)) ``5/16`` ``5/16`` icon
-
+        captionText medSize (startX + inset + textPadding) (top + padding) (width - 2. * (inset + textPadding)) (height - 2. * padding) text
+    let drawAbility abilityTop (height: float<dot>) icon text =
+        captionText medSize (startX + inset + 2. * ``5/32`` + textPadding) (top + abilityTop + padding) (width - 2. * (inset + textPadding + ``5/32``)) (height - 2. * padding) text
+        >> line darkGray lineworkWidth (startX + inset) (top + abilityTop) (startX + width - inset) (top + abilityTop)
+        >> outlinedCircle (startX + ``5/32`` + inset + abilityIconPadding) (top + abilityTop + height / 2.) ``5/32``
+        >> overlayImage (startX + inset + abilityIconPadding) (top + abilityTop + (height / 2. - ``5/32``)) ``5/16`` ``5/16`` icon
+    let cardAbilityHalfPoint = (bottom - top) / 2.
+    let cardAbilityThirdPoint = (bottom - top) / 3.
+    let cardAbilityTwoThirdPoint = (bottom - top) * 2. / 3.
     let main, ally, scrap, faction = 
         match card with
         | Ship { Core = { MainAbility = main; Faction = faction }; AllyAbility = ally; TrashAbility = scrap } 
@@ -60,20 +66,21 @@ let drawAbilities boundaries card (i: ImageState) =
         | Planet { Core = { MainAbility = main; Faction = faction } } ->
             main, None, None, faction
     i 
-    |> line darkGray lineworkWidth inset cardMidpoint (boundaries.PixelWidth - inset) cardMidpoint
-    |> line darkGray lineworkWidth inset cardBottomPoint (boundaries.PixelWidth - inset) cardBottomPoint
+    |> line darkGray lineworkWidth (startX + inset) top (startX + width - inset) top
+    |> line darkGray lineworkWidth (startX + inset) bottom (startX + width - inset) bottom
     |> match ally, scrap with
         | Some at, Some st -> 
-            drawMainTextAtHeight abilityThirdPoint main.Text
-            >> drawAbility abilityThirdPoint abilityThirdPoint faction.Icon.Value at.Text
-            >> drawAbility abilityTwoThirdPoint abilityThirdPoint trashImage st.Text
+            drawMainTextAtHeight cardAbilityThirdPoint main.Text
+            >> drawAbility cardAbilityThirdPoint cardAbilityThirdPoint faction.Icon.Value at.Text
+            >> drawAbility cardAbilityTwoThirdPoint cardAbilityThirdPoint trashImage st.Text
         | Some at, None -> 
-            drawMainTextAtHeight abilityHalfPoint main.Text
-            >> drawAbility abilityHalfPoint abilityHalfPoint faction.Icon.Value at.Text
+            drawMainTextAtHeight cardAbilityHalfPoint main.Text
+            >> drawAbility cardAbilityHalfPoint cardAbilityHalfPoint faction.Icon.Value at.Text
         | None, Some st -> 
-            drawMainTextAtHeight abilityHalfPoint main.Text
-            >> drawAbility abilityHalfPoint abilityHalfPoint trashImage st.Text
-        | None, None -> drawMainTextAtHeight (cardBottomPoint - cardMidpoint) main.Text
+            drawMainTextAtHeight cardAbilityHalfPoint main.Text
+            >> drawAbility cardAbilityHalfPoint cardAbilityHalfPoint trashImage st.Text
+        | None, None -> 
+            drawMainTextAtHeight (bottom - top) main.Text
 
 let drawCostAt boundaries cost =
     let centerX, arcHalfLength = (boundaries.PixelWidth - iconCostYOffset), iconCostRadius / Math.Sqrt 2.
@@ -115,7 +122,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
             core, false
         | Planet _ -> invalidOp "This function does not support drawing planets"
 
-    let drawLogo (i: Icon) =
+    let drawLogo (i: ImageData) =
         let w = (cardMidpoint - (inset + 2. * padding + ``1/2``))
         overlayImage 
             (boundaries.PixelWidth / 2. - w / 2.)
@@ -138,8 +145,8 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
         drawLogo shieldImage
         >> drawShieldAbilities s
        | Mercenary _ -> drawLogo fleetImage
-       | Monster _ -> drawLogo fleetImage
-       | Relic _ -> drawLogo fleetImage
+       | Monster m -> spaceMonsterIcons[m.Core.Name.GetHashCode() |> Math.Abs |> (flip (%) spaceMonsterIcons.Length)] |> drawLogo
+       | Relic _ -> drawLogo relicImage
     // cost
     |> drawCostAt boundaries data.Cost
     // reward
@@ -149,27 +156,30 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
             >> (string i |> text largeSize TextAlignment.Center Center (rewardRadius + inset + 2. * padding + 1.<dot>) (boundaries.PixelHeight - rewardRadius - inset - 3. * padding - 1.<dot>))
        | None -> id
     // ability area
-    |> drawAbilities boundaries card
+    |> drawAbilities 0.<dot> cardMidpoint boundaries.PixelWidth cardBottomPoint card
     // name
-    |> captionTextCentered boundaries largeSize (iconCostDiameter + inset + padding) inset ``3/8`` data.Name
+    |> captionText largeSize (iconCostDiameter + inset + padding) inset (boundaries.PixelWidth - 2. * (iconCostDiameter + inset + padding)) ``3/8`` data.Name
     // faction-kind banner
-    |> captionTextCentered boundaries medSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (medSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{data.Faction.Name} {cardKind card}"""
+    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.PixelWidth - 2. * (iconCostDiameter + inset + padding)) (smallSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{data.Faction.Name} {cardKind card}"""
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
+    // count
     |> (List.init (Option.defaultValue 0u data.Count |> int) id
         |> List.fold (fun s i -> s >> filledCircle black darkGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
 
 let drawPlanet boundaries (card: Planet) (i: ImageState) =
     let nameBottom = largeSize + inset + 2. * textPadding
-    let drawLogo (i: Icon) =
-        let w = (cardMidpoint - (inset + 2. * padding + ``1/2``))
+    //let leftRectangle = { boundaries with Width }
+    let drawLogo (i: ImageData) =
+        let w = (planetVerticalMidpoint - (inset + 2. * padding + ``1/2``))
         overlayImage 
-            (boundaries.PixelWidth / 2. - w / 2.)
+            (planetVerticalMidpoint / 2. - w / 2.)
             (inset + 2. * padding + ``1/2``) 
             w w i
     i 
     |> rectangle card.Core.Faction.Primary (lineworkWidth * 2.) (inset - 3.<dot>) (inset - 3.<dot>) (boundaries.PixelWidth - inset + 3.<dot>) (boundaries.PixelHeight - inset + 3.<dot>)
     |> rectangle darkGray lineworkWidth inset inset (boundaries.PixelWidth - inset) (boundaries.PixelHeight - inset)
+    |> line darkGray lineworkWidth planetVerticalMidpoint inset planetVerticalMidpoint (boundaries.PixelHeight - inset)
     // logo
     |> drawLogo planetImage
     // cost
@@ -180,16 +190,18 @@ let drawPlanet boundaries (card: Planet) (i: ImageState) =
     //        outlinedCircle (``1/8``+ inset + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
     //        >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
     //   | None -> id
+    // TODO: allow for three planet abilities, with icons
+    // health bar, reward schedule, regular reward placement, cost icons, flavor text
     // ability area
-    //|> drawAbilities boundaries card
+    |> drawAbilities planetVerticalMidpoint planetAbilityTopPoint planetVerticalMidpoint cardBottomPoint (Planet card)
     // name
-    |> captionTextCentered boundaries largeSize (``3/8`` + inset) inset ``3/8`` card.Core.Name
+    |> captionText largeSize (``3/8`` + inset) inset (planetVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionTextCentered boundaries medSize (``3/8`` + inset) (inset + ``3/8``) (medSize + 2. * padding) (cardKind <| Planet card)
+    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (planetVerticalMidpoint - 2. * (``3/8`` + inset)) (smallSize + 2. * padding) (cardKind <| Planet card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
-    |> (List.init (Option.defaultValue 0u card.Core.Count |> int) id
-        |> List.fold (fun s i -> s >> filledCircle darkGray medGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
+    //|> (List.init (Option.defaultValue 0u card.Core.Count |> int) id
+    //    |> List.fold (fun s i -> s >> filledCircle darkGray medGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
 
 let draw (path: string) card =
     let boundaries = 

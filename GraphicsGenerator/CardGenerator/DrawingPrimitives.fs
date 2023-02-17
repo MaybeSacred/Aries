@@ -181,7 +181,7 @@ let line color (width: float<dot>) (startX: float<dot>) (startY: float<dot>) (en
      .PopGraphicContext()
     i
 
-let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (icon: Icon) (i: ImageState) =
+let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (icon: ImageData) (i: ImageState) =
     let settings = MagickReadSettings()
     //settings.FillColor <- black
     settings.BackgroundColor <- MagickColors.Transparent
@@ -209,6 +209,6 @@ let captionText (size: float<dot>) (startX: float<dot>) (startY: float<dot>) (wi
     i.Image.Composite(ii, int startX, int startY, CompositeOperator.Over)
     i
 
-let captionTextCentered boundaries size startX startY height (text: string) (i: ImageState) =
-    captionText size startX startY (boundaries.XPixelCount - 2. * startX) height text i
+//let captionTextCentered boundaries size startX startY height (text: string) (i: ImageState) =
+//    captionText size startX startY (boundaries.XPixelCount - 2. * startX) height text i
 

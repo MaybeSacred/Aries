@@ -193,6 +193,7 @@ let tryCreateCard main ally trash =
             Reward = main.Reward >>= tryParse<uint>
             Count = main.CardCount >>= tryParse<uint>
             Faction = main.Faction
+            FlavorText = main.FlavorText
         }
         let upgraded = main.UpgradeCost |> Option.isSome
         match main.Kind with
