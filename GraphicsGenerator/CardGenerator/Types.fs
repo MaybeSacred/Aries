@@ -61,7 +61,8 @@ type CardCore = {
     Name: string
     MainAbility: Ability
     Cost: CardCost option
-    Count: uint option
+    Count: uint
+    ShowCount: bool
     Reward: uint option
     Faction: FactionData
     FlavorText: string option
@@ -304,7 +305,8 @@ let metallicHydrogenSupplier = Ship {
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 88u<credit>
         Reward = Some 88u
-        Count = Some 3u
+        Count = 3u
+        ShowCount = true
         Faction = rogueAlliance
         FlavorText = Some "Flavor text"
     }
@@ -319,7 +321,8 @@ let imperialFighter = Ship {
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 88u<credit>
         Reward = Some 88u
-        Count = Some 3u
+        Count = 3u
+        ShowCount = true
         Faction = imperium
         FlavorText = Some "Flavor text"
     }
@@ -334,7 +337,8 @@ let ``343rd Batallion`` = Fleet {
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| StrengthOnly 88u<strength>
         Reward = Some 88u
-        Count = Some 3u
+        Count = 3u
+        ShowCount = true
         Faction = botBrigade
         FlavorText = Some "Flavor text"
     }
@@ -349,7 +353,8 @@ let bigCredit = Ship {
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 22u<credit>
         Reward = Some 1u
-        Count = None
+        Count = 1u
+        ShowCount = false
         Faction = unaligned
         FlavorText = Some "Flavor text"
     }
@@ -364,7 +369,8 @@ let bigLaser = Ship {
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOrStrength (88u<credit>, 88u<strength>)
         Reward = Some 1u
-        Count = None
+        Count = 1u
+        ShowCount = false
         Faction = unaligned
         FlavorText = Some "Flavor text"
     }
@@ -387,7 +393,8 @@ let refractiveShield = Shield {
         } }
         Cost = Some <| CreditAndStrength (88u<credit>, 88u<strength>)
         Reward = Some 88u
-        Count = Some 3u
+        Count = 3u
+        ShowCount = true
         Faction = stellarion
         FlavorText = Some "Flavor text"
     }
@@ -401,7 +408,8 @@ let planet = Planet {
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
         Cost = Some <| CreditOnly 88u<credit>
         Reward = Some 88u
-        Count = Some 1u
+        Count = 1u
+        ShowCount = true
         Faction = unaligned
         FlavorText = Some "Flavor text"
     }

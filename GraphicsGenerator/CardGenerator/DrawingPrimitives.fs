@@ -88,9 +88,9 @@ let ``3/8`` = (3.<inch> / 8.) * dpi
 let ``1/2`` = dpi * 1.<inch> / 2.
 
 [<Literal>]
-let inset = 10.<dot>
+let inset = 12.<dot>
 [<Literal>]
-let circleSize = 18.<dot>
+let rewardCircleSize = 18.<dot>
 [<Literal>]
 let smallSize = 24.<dot>
 [<Literal>]
@@ -102,7 +102,7 @@ let extraLargeSize = 48.<dot>
 [<Literal>]
 let extraExtraLargeSize = 64.<dot>
 [<Literal>]
-let lineworkWidth = 4.<dot>
+let lineworkWidth = 5.<dot>
 [<Literal>]
 let textPadding = 12.<dot>
 [<Literal>]

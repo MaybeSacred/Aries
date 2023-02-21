@@ -22,31 +22,34 @@ let KindCol = "C"
 [<Literal>]
 let TextCol = "D"
 [<Literal>]
-let CardCountCol = "E"
+let CreditCostCol = "E"
 [<Literal>]
-let CreditCostCol = "F"
+let StrengthCostCol = "F"
 [<Literal>]
-let StrengthCostCol = "G"
+let RewardCol = "G"
 [<Literal>]
-let RewardCol = "H"
+let CreditGainCol = "I"
 [<Literal>]
-let CreditGainCol = "J"
+let StrengthGainCol = "J"
 [<Literal>]
-let StrengthGainCol = "K"
+let EnergyGainCol = "K"
 [<Literal>]
-let EnergyGainCol = "L"
+let RewardGainCol = "L"
 [<Literal>]
-let RewardGainCol = "M"
+let ShieldHealthCol = "N"
 [<Literal>]
-let ShieldHealthCol = "O"
+let UpgradeCostCol = "U"
 [<Literal>]
-let UpgradeCostCol = "V"
+let TrashCol = "Y"
 [<Literal>]
-let TrashCol = "Z"
+let AllyCol = "Z"
 [<Literal>]
-let AllyCol = "AA"
+let FlavorTextCol = "AF"
 [<Literal>]
-let FlavorTextCol = "AG"
+let CardCountCol = "AH"
+[<Literal>]
+let ShowCardCountCol = "AI"
+// if adding a col, update the code at the bottom
 
 type ParsedRow = string option list
 
@@ -55,7 +58,8 @@ type PartialCard = {
     Faction: FactionData
     Kind: string
     Text: string
-    CardCount: string option
+    CardCount: uint option
+    ShowCardCount: bool
     CreditCost: string option
     StrengthCost: string option
     Reward: string option
@@ -131,7 +135,12 @@ let tryReadRow (r: ParsedRow) =
         let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{toDebugRow r}"
         let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{toDebugRow r}"
         let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row %A{toDebugRow r}"
-        let cardCount = itemAt CardCountCol r 
+        let hasCardCount = 
+            itemAt ShowCardCountCol r 
+            >>= hasValue
+            |> Option.map (fun _ -> true) 
+            |> Option.defaultValue false
+        let cardCount = itemAt CardCountCol r >>= tryParse<uint> 
         let creditCost = itemAt CreditCostCol r 
         let strengthCost = itemAt StrengthCostCol r 
         let reward = itemAt RewardCol r 
@@ -150,6 +159,7 @@ let tryReadRow (r: ParsedRow) =
             Kind = kind
             Text = text
             CardCount = cardCount
+            ShowCardCount = hasCardCount
             CreditCost = creditCost
             StrengthCost = strengthCost
             Reward = reward
@@ -186,12 +196,14 @@ let rowToAbility (row: PartialCard) =
 
 let tryCreateCard main ally trash =
     result {
+        let! cardCount = main.CardCount |> Result.requireSome $"Cards must have a count %A{main} %A{ally} %A{trash}"
         let core = {
             Name = main.Name
             MainAbility = rowToAbility main
             Cost = parseCost main.Kind main.CreditCost main.StrengthCost
             Reward = main.Reward >>= tryParse<uint>
-            Count = main.CardCount >>= tryParse<uint>
+            Count = cardCount
+            ShowCount = main.ShowCardCount
             Faction = main.Faction
             FlavorText = main.FlavorText
         }
@@ -268,7 +280,7 @@ let load (path: string) =
             (opened.Body.Spreadsheet.Tables[1].TableRowGroups
             |> List.ofArray
             |> List.map (fun s -> s.TableRows |> List.ofArray |> List.map rowToList2))
-        |> List.map (List.map (List.take (colToInt FlavorTextCol + 1)) >> partialRowsToCard)
+        |> List.map (List.map (List.take (colToInt ShowCardCountCol + 1)) >> partialRowsToCard)
         |> Result.partition
     let cards, maybeCards = cards |> List.unzip
     maybeCards |> List.choose id |> List.append cards, errors |> List.collect id

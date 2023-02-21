@@ -8,6 +8,7 @@ open FSharpPlus
 
 open Types
 open DrawingPrimitives
+open System.Collections.Concurrent
 
 // card
 let creditStrengthDualCostOffset = ``1/16`` + 2.<dot>
@@ -28,21 +29,23 @@ let iconCostTextYOffset = iconCostRadius + inset - quanta
 let rewardRadius = ``1/8`` - quanta
 let rewardDiameter = 2. * rewardRadius
 
+// TODO: pick better icons for health, costs, energy gain
 let drawShieldAbilities (shield: Shield) (i: ImageState) =
     let availableHeight = cardMidpoint - topTextBottom - textPadding
-    [ Some <| float shield.Health, shieldBlue
-      Option.map float shield.Core.MainAbility.Metadata.CreditGain, creditGold
-      Option.map float shield.Core.MainAbility.Metadata.StrengthGain, strengthRed
-      Option.map float shield.Core.MainAbility.Metadata.EnergyGain, energyGreen ]
-    |> List.mapi (fun i (v, c) -> 
+    [ "H", Some <| float shield.Health, shieldBlue
+      "C", Option.map float shield.Core.MainAbility.Metadata.CreditGain, creditGold
+      "S", Option.map float shield.Core.MainAbility.Metadata.StrengthGain, strengthRed
+      "E", Option.map float shield.Core.MainAbility.Metadata.EnergyGain, energyGreen ]
+    |> List.mapi (fun i (abbr, v, color) -> 
         match v with
-        | Some s ->
-            filledCircle c darkGray (``5/32`` + inset + abilityIconPadding) (topTextBottom + textPadding + availableHeight * (float i / 4.) + ``5/32``) ``5/32``
-            >> (text extraLargeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int s}")
+        | Some value ->
+            filledCircle color darkGray (``5/32`` + inset + abilityIconPadding) (topTextBottom + textPadding + availableHeight * (float i / 4.) + ``5/32``) ``5/32``
+            >> (text extraLargeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int value}{abbr}")
         | None -> id)
     |> List.iter (fun s -> s i |> ignore)
     i
-    // TODO: remove inset to startX and width here, and add them to parameters
+
+// TODO: remove inset to startX and width here, and add them to parameters
 let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bottom: float<dot>) card (i: ImageState) =
     let drawMainTextAtHeight height text =
         captionText medSize (startX + inset + textPadding) (top + padding) (width - 2. * (inset + textPadding)) (height - 2. * padding) text
@@ -162,10 +165,10 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // faction-kind banner
     |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.PixelWidth - 2. * (iconCostDiameter + inset + padding)) (smallSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{data.Faction.Name} {cardKind card}"""
     // version
-    |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
+    |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - textPadding) version
     // count
-    |> (List.init (Option.defaultValue 0u data.Count |> int) id
-        |> List.fold (fun s i -> s >> filledCircle black darkGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
+    |> (if data.ShowCount then List.init (int data.Count) id else []
+        |> List.fold (fun s i -> s >> filledCircle black darkGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize / 2.) (rewardCircleSize / 2.)) id)
 
 let drawPlanet boundaries (card: Planet) (i: ImageState) =
     let nameBottom = largeSize + inset + 2. * textPadding
@@ -201,34 +204,63 @@ let drawPlanet boundaries (card: Planet) (i: ImageState) =
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
     //|> (List.init (Option.defaultValue 0u card.Core.Count |> int) id
-    //    |> List.fold (fun s i -> s >> filledCircle darkGray medGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
+    //    |> List.fold (fun s i -> s >> filledCircle darkGray medGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
 
-let draw (path: string) card =
-    let boundaries = 
-        match card with
-        | Planet p -> planetBoundaries
-        | s -> cardBoundaries
-    use image = new MagickImage(MagickColors.White, int boundaries.XPixelCount, int boundaries.YPixelCount)
-    printfn $"Drawing card {card} to path {path}"
-    image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
+let cardCache = ConcurrentDictionary<Card, MagickImage>()
+
+let drawAt card boundaries startX startY (masterImage: MagickImage) =
+    let image = 
+        cardCache.GetOrAdd (card, (fun c ->
+            let image = new MagickImage(MagickColors.White, int boundaries.XPixelCount, int boundaries.YPixelCount)
+            image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
+            let drawable = Drawables()
+            { Image = image; Drawables = drawable }
+            |> match card with
+               | Planet p -> drawPlanet boundaries p
+               | s -> drawCardCore boundaries s
+            |> ignore
+            drawable.Draw image
+            image))
     
-    let drawable = Drawables()
-    { Image = image; Drawables = drawable }
-    |> match card with
-       | Planet p -> drawPlanet boundaries p
-       | s -> drawCardCore boundaries s
-    |> ignore
-    drawable.Draw image
-    image.Write path
+    printfn $"Drawing card {card} at position {(startX, startY)}"
+    masterImage.Composite(image, startX, startY, CompositeOperator.Over)
+
+let drawToFile (path: string) compositeCards cards =
+    let boundaries = 
+        match List.forall (function Planet p -> true | _ -> false) cards with 
+        | true -> planetBoundaries
+        | false -> cardBoundaries
+    use image = 
+        new MagickImage(MagickColors.White,
+            (if compositeCards then 3 * int boundaries.XPixelCount else int boundaries.XPixelCount),
+            if compositeCards then 3 * int boundaries.YPixelCount else int boundaries.YPixelCount)
+    image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
+    for (x, y, c) in cards |> List.mapi (fun i c -> (i / 3 * (int boundaries.XPixelCount), i % 3 * (int boundaries.YPixelCount), c)) do 
+        drawAt c boundaries x y image
+    let name = 
+        if compositeCards then 
+            Guid.NewGuid().ToString() 
+        else 
+            List.head cards |> name |> String.filter (fun c -> c <> ' ')
+    image.Write $"{path}\{name}.png"
+
+let drawAllCards = true
+let compositeCards = true
 
 let outputPath = System.IO.Path.Combine(basePath, GeneratedFolder)
 if Directory.Exists outputPath then
     Directory.Delete(outputPath, true)
 Directory.CreateDirectory outputPath |> ignore
 
-let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
-File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
-cards 
-//sampleCards
-|> PSeq.iter (fun s -> draw $"{outputPath}\{name s |> String.filter (fun c -> c <> ' ')}.png" s)
-
+try
+    let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
+    File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
+    cards 
+    //sampleCards
+    |> List.collect (fun c -> konst c |> List.init (if drawAllCards then int (core c).Count else 1))
+    |> List.sortBy name
+    |> List.chunkBySize (if compositeCards then 9 else 1)
+    |> PSeq.iter (drawToFile outputPath compositeCards)
+finally
+    for i in cardCache do
+        i.Value.Dispose()
