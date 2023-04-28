@@ -289,7 +289,7 @@ let botBrigade = {
 }
 
 let rogueAlliance = {
-    Primary = MagickColor(0x05uy, 0x45uy, 0x16uy)
+    Primary = MagickColor(0x0Buy, 0x5Fuy, 0x1Cuy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
         Path = @"RogueAllianceLogo.webp"

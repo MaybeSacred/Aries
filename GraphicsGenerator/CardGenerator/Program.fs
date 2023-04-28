@@ -5,10 +5,10 @@ open System.IO
 open Microsoft.FSharp.Collections
 open FSharp.Collections.ParallelSeq
 open FSharpPlus
+open System.Collections.Concurrent
 
 open Types
 open DrawingPrimitives
-open System.Collections.Concurrent
 
 // card
 let creditStrengthDualCostOffset = ``1/16`` + 2.<dot>
@@ -40,7 +40,7 @@ let drawShieldAbilities (shield: Shield) (i: ImageState) =
         match v with
         | Some value ->
             filledCircle color darkGray (``5/32`` + inset + abilityIconPadding) (topTextBottom + textPadding + availableHeight * (float i / 4.) + ``5/32``) ``5/32``
-            >> (text extraLargeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int value}{abbr}")
+            >> (text largeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int value}{abbr}")
         | None -> id)
     |> List.iter (fun s -> s i |> ignore)
     i
@@ -180,7 +180,7 @@ let drawPlanet boundaries (card: Planet) (i: ImageState) =
             (inset + 2. * padding + ``1/2``) 
             w w i
     i 
-    |> rectangle card.Core.Faction.Primary (lineworkWidth * 2.) (inset - 3.<dot>) (inset - 3.<dot>) (boundaries.PixelWidth - inset + 3.<dot>) (boundaries.PixelHeight - inset + 3.<dot>)
+    |> rectangle card.Core.Faction.Primary inset (inset / 2.) (inset / 2.) (boundaries.PixelWidth - (inset / 2.)) (boundaries.PixelHeight - (inset / 2.))
     |> rectangle darkGray lineworkWidth inset inset (boundaries.PixelWidth - inset) (boundaries.PixelHeight - inset)
     |> line darkGray lineworkWidth planetVerticalMidpoint inset planetVerticalMidpoint (boundaries.PixelHeight - inset)
     // logo
@@ -232,10 +232,10 @@ let drawToFile (path: string) compositeCards cards =
         | false -> cardBoundaries
     use image = 
         new MagickImage(MagickColors.White,
-            (if compositeCards then 3 * int boundaries.XPixelCount else int boundaries.XPixelCount),
-            if compositeCards then 3 * int boundaries.YPixelCount else int boundaries.YPixelCount)
+            (if compositeCards then 3 * int boundaries.XPixelCount + 4 else int boundaries.XPixelCount),
+             if compositeCards then 3 * int boundaries.YPixelCount + 4 else int boundaries.YPixelCount)
     image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
-    for (x, y, c) in cards |> List.mapi (fun i c -> (i / 3 * (int boundaries.XPixelCount), i % 3 * (int boundaries.YPixelCount), c)) do 
+    for (x, y, c) in cards |> List.mapi (fun i c -> (i / 3 * (int boundaries.XPixelCount) + 2 * (i / 3), i % 3 * (int boundaries.YPixelCount) + 2 * (i % 3), c)) do 
         drawAt c boundaries x y image
     let name = 
         if compositeCards then 
