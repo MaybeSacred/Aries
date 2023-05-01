@@ -3,7 +3,7 @@
 open ImageMagick
 
 [<Measure>]
-type credit
+type trade
 
 [<Measure>]
 type strength
@@ -12,10 +12,10 @@ type strength
 type hp = strength
 
 [<Measure>]
-type energy
+type anima
 
 [<Measure>]
-type reward
+type favor
 
 type ImageData = {
     Path: string 
@@ -31,51 +31,82 @@ type FactionData = {
 }
 
 type AbilityMetadata = { 
-    CreditGain: uint<credit> option
+    TradeGain: uint<trade> option
     StrengthGain: uint<strength> option
-    EnergyGain: uint<energy> option
-    RewardGain: uint<reward> option
+    AnimaGain: uint<anima> option
+    AnimaCost: uint<anima> option
+    FavorGain: uint<favor> option
 }
 
 let defaultMetadata = { 
-    CreditGain = None
+    TradeGain = None
     StrengthGain = None
-    EnergyGain = None
-    RewardGain = None
+    AnimaGain = None
+    AnimaCost = None
+    FavorGain = None
 }
 
-type Ability = {
+type MainAbility = {
     Text: string 
     Metadata: AbilityMetadata
-    IsInfinite: bool
+    Cost: uint<anima> option
 }
 
+type AllyAbility = {
+    Text: string 
+    Metadata: AbilityMetadata
+    Faction: FactionData
+}
+
+type TrashAbility = {
+    Text: string 
+    Metadata: AbilityMetadata
+}
+
+type AnimaAbility = {
+    Text: string 
+    Metadata: AbilityMetadata
+    Cost: uint<anima>
+}
+
+type Ability = 
+    | Main of MainAbility 
+    | Ally of AllyAbility 
+    | Anima of AnimaAbility 
+    | Trash of TrashAbility
+
+    member x.Text =
+        match x with 
+        | Main s -> s.Text
+        | Ally s -> s.Text
+        | Anima s -> s.Text
+        | Trash s -> s.Text
+
 type CardCost =
-    | CreditOnly of uint<credit>
+    | TradeOnly of uint<trade>
     | StrengthOnly of uint<strength>
-    | CreditOrStrength of credit: uint<credit> * strength: uint<strength>
-    | CreditAndStrength of credit: uint<credit> * strength: uint<strength>
+    | TradeOrStrength of trade: uint<trade> * strength: uint<strength>
+    | TradeAndStrength of trade: uint<trade> * strength: uint<strength>
 
 // it's card-core parkour
 type CardCore = {
     Name: string
-    MainAbility: Ability
+    MainAbility: MainAbility
     Cost: CardCost option
     Count: uint
     ShowCount: bool
-    Reward: uint option
+    Favor: uint option
     Faction: FactionData
     FlavorText: string option
 }
 
-type FleetOrShip = {
+type BuildingOrHuman = {
     Core: CardCore
-    AllyAbility: Ability option
-    TrashAbility: Ability option
+    SecondaryAbility: Ability option
     Upgraded: bool
 }
 
-type Mercenary = {
+type Nomad = {
     Core: CardCore
 }
 
@@ -83,50 +114,57 @@ type Monster = {
     Core: CardCore
 }
 
-type Relic = {
+type God = {
     Core: CardCore
 }
 
+type Relic = {
+    Core: CardCore
+}
+// aegis? battlement? fortification?
 type Shield = {
     Core: CardCore
     Health: uint<hp>
     Upgraded: bool
 }
 
-type RewardSchedule = { First: uint<reward>; Second: uint<reward>; Third: uint<reward> }
+//type FavorSchedule = { First: uint<favor>; Second: uint<favor>; Third: uint<favor> }
 
-type Planet = {
+type Settlement = {
     Core: CardCore
     Health: uint<hp>
-    RewardSchedule: RewardSchedule
+    //FavorSchedule: FavorSchedule
 }
 
 type Card = 
     | Shield of Shield 
-    | Ship of FleetOrShip
-    | Fleet of FleetOrShip
-    | Planet of Planet
-    | Mercenary of Mercenary
+    | Human of BuildingOrHuman
+    | Building of BuildingOrHuman
+    | Settlement of Settlement
+    | God of God
+    | Nomad of Nomad
     | Monster of Monster
     | Relic of Relic
 
 let cardKind =
     function  
     | Shield _ -> "Shield"
-    | Ship _ -> "Ship"
-    | Fleet _ -> "Fleet"
-    | Planet _ -> "Planet"
-    | Mercenary _ -> "Mercenary"
+    | Human _ -> "Human"
+    | Building _ -> "Building"
+    | Settlement _ -> "Settlement"
+    | God _ -> "God"
+    | Nomad _ -> "Nomad"
     | Monster _ -> "Monster"
     | Relic _ -> "Relic"
 
 let core =
     function
     | Shield { Core = c } 
-    | Ship { Core = c } 
-    | Fleet { Core = c } 
-    | Planet { Core = c }
-    | Mercenary { Core = c }
+    | Human { Core = c } 
+    | Building { Core = c } 
+    | Settlement { Core = c }
+    | God { Core = c }
+    | Nomad { Core = c }
     | Monster { Core = c }
     | Relic { Core = c }
         -> c
@@ -135,14 +173,14 @@ let name c = core c |> fun s -> s.Name
 
 // data
 
-let shipImage = {
-    Path = @"Ship.webp"
+let humanImage = {
+    Path = @"Human.webp"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
 
-let fleetImage = {
-    Path = @"FleetLogo.png"
+let buildingImage = {
+    Path = @"BuildingLogo.png"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
@@ -159,8 +197,8 @@ let trashImage = {
     Opacity = 1.
 }
 
-let planetImage = {
-    Path = @"PlanetGrayIcon.png"
+let settlementImage = {
+    Path = @"SettlementGrayIcon.png"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
@@ -171,8 +209,8 @@ let relicImage = {
     Opacity = 0.8
 }
 
-let spaceMercenaryImage = {
-    Path = @"SpaceMercenaryUpdated.webp"
+let spaceNomadImage = {
+    Path = @"SpaceNomadUpdated.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
@@ -222,15 +260,26 @@ let unaligned = {
     Name = "Unaligned"
 }
 
-let mercenary = {
-    Primary = MagickColor(0x5Fuy, 0x68uy, 0x7Auy)
+let all = {
+    Primary = MagickColor(0xAFuy, 0xAFuy, 0xAFuy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
-        Path = @"MercenaryLogoUpdated.png"
+        Path = @"NomadLogoUpdated.png"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
-    Name = "Mercenary"
+    Name = "All"
+}
+
+let nomad = {
+    Primary = MagickColor(0x5Fuy, 0x68uy, 0x7Auy)
+    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Icon = Some {
+        Path = @"NomadLogoUpdated.png"
+        ScaleCorrection = 1.0
+        Opacity = 1.
+    }
+    Name = "Nomad"
 }
 
 let monster = {
@@ -299,83 +348,78 @@ let rogueAlliance = {
     Name = "Rogue Alliance"
 }
 
-let metallicHydrogenSupplier = Ship {
+let metallicHydrogenSupplier = Human {
     Core = {
         Name = "Metallic Hydrogen Supplier"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
-        Cost = Some <| CreditOnly 88u<credit>
-        Reward = Some 88u
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        Cost = Some <| TradeOnly 88u<trade>
+        Favor = Some 88u
         Count = 3u
         ShowCount = true
         Faction = rogueAlliance
         FlavorText = Some "Flavor text"
     }
-    AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
-    TrashAbility = None
+    SecondaryAbility = Some <| Ally { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; Faction = rogueAlliance }
     Upgraded = true
 }
 
-let imperialFighter = Ship {
+let imperialFighter = Human {
     Core = {
         Name = "Imperial Fighter"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
-        Cost = Some <| CreditOnly 88u<credit>
-        Reward = Some 88u
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        Cost = Some <| TradeOnly 88u<trade>
+        Favor = Some 88u
         Count = 3u
         ShowCount = true
         Faction = imperium
         FlavorText = Some "Flavor text"
     }
-    AllyAbility = None
-    TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
+    SecondaryAbility = Some <| Trash { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata }
     Upgraded = false
 }
 
-let ``343rd Batallion`` = Fleet {
+let ``343rd Batallion`` = Building {
     Core = {
         Name = "343rd Batallion"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
         Cost = Some <| StrengthOnly 88u<strength>
-        Reward = Some 88u
+        Favor = Some 88u
         Count = 3u
         ShowCount = true
         Faction = botBrigade
         FlavorText = Some "Flavor text"
     }
-    AllyAbility = Some { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = true }
-    TrashAbility = Some { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata; IsInfinite = false }
+    SecondaryAbility = Some <| Trash { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata}
     Upgraded = true
 }
 
-let bigCredit = Ship {
+let bigTrade = Human {
     Core = {
-        Name = "Big Credit"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
-        Cost = Some <| CreditOnly 22u<credit>
-        Reward = Some 1u
+        Name = "Big Trade"
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        Cost = Some <| TradeOnly 22u<trade>
+        Favor = Some 1u
         Count = 1u
         ShowCount = false
         Faction = unaligned
         FlavorText = Some "Flavor text"
     }
-    AllyAbility = None
-    TrashAbility = None
+    SecondaryAbility = None
     Upgraded = false
 }
 
-let bigLaser = Ship {
+let bigLaser = Human {
     Core = {
         Name = "Big Laser"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
-        Cost = Some <| CreditOrStrength (88u<credit>, 88u<strength>)
-        Reward = Some 1u
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        Cost = Some <| TradeOrStrength (88u<trade>, 88u<strength>)
+        Favor = Some 1u
         Count = 1u
         ShowCount = false
         Faction = unaligned
         FlavorText = Some "Flavor text"
     }
-    AllyAbility = None
-    TrashAbility = None
+    SecondaryAbility = None
     Upgraded = false
 }
 
@@ -383,16 +427,17 @@ let refractiveShield = Shield {
     Core = {
         Name = "Refractive Shield"
         MainAbility = { 
-            Text = "Draw 1 card. Some really long text to see what happens";
-            IsInfinite = false
+            Text = "Draw 1 card. Some really long text to see what happens"
+            Cost = None
             Metadata = { 
-                CreditGain = Some 8u<credit>
+                TradeGain = Some 8u<trade>
                 StrengthGain = Some 8u<strength>
-                EnergyGain = Some 8u<energy>
-                RewardGain = Some 8u<reward>
+                AnimaGain = Some 8u<anima>
+                AnimaCost = Some 8u<anima>
+                FavorGain = Some 8u<favor>
         } }
-        Cost = Some <| CreditAndStrength (88u<credit>, 88u<strength>)
-        Reward = Some 88u
+        Cost = Some <| TradeAndStrength (88u<trade>, 88u<strength>)
+        Favor = Some 88u
         Count = 3u
         ShowCount = true
         Faction = stellarion
@@ -402,20 +447,20 @@ let refractiveShield = Shield {
     Upgraded = true
 }
 
-let planet = Planet {
+let settlement = Settlement {
     Core = {
         Name = "Vega"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; IsInfinite = false }
-        Cost = Some <| CreditOnly 88u<credit>
-        Reward = Some 88u
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        Cost = Some <| TradeOnly 88u<trade>
+        Favor = Some 88u
         Count = 1u
         ShowCount = true
         Faction = unaligned
         FlavorText = Some "Flavor text"
     }
     Health = 8u<hp>
-    RewardSchedule = { First = 3u<reward>; Second = 2u<reward>; Third = 1u<reward> }
+    //FavorSchedule = { First = 3u<favor>; Second = 2u<favor>; Third = 1u<favor> }
 }
 
 let sampleCards = 
-    [planet; metallicHydrogenSupplier; bigCredit; bigLaser; imperialFighter; ``343rd Batallion``; refractiveShield]
+    [settlement; metallicHydrogenSupplier; bigTrade; bigLaser; imperialFighter; ``343rd Batallion``; refractiveShield]

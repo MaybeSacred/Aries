@@ -33,10 +33,10 @@ let colorWithOpacity (color: IMagickColor<byte>) opacity = MagickColor(color.R, 
 let darkGray = MagickColor(0x14uy, 0x1Duy, 0x1Duy)
 let medGray = MagickColor(0x46uy, 0x58uy, 0x58uy)
 let black = MagickColor(0x08uy, 0x08uy, 0x08uy)
-let creditGold = colorWithOpacity MagickColors.Gold 0x70uy
+let tradeGold = colorWithOpacity MagickColors.Gold 0x70uy
 let strengthRed = colorWithOpacity MagickColors.Red 0x70uy
 let shieldBlue = colorWithOpacity MagickColors.CornflowerBlue 0x68uy
-let energyGreen = colorWithOpacity MagickColors.LawnGreen 0x68uy
+let animaGreen = colorWithOpacity MagickColors.LawnGreen 0x68uy
 
 [<Literal>]
 let dpi = 300.<dot/inch>
@@ -75,7 +75,7 @@ let fromDimensions width height = {
 
 let cardBoundaries = fromDimensions (2.<inch> + 7.<inch>/16.) (3.<inch> + 7.<inch>/16.)
 
-let planetBoundaries = fromDimensions (5.<inch>) (3.<inch>)
+let settlementBoundaries = fromDimensions (5.<inch>) (3.<inch>)
 
 let ``1/16`` = (1.<inch> / 16.) * dpi
 let ``3/32`` = (3.<inch> / 32.) * dpi
@@ -90,7 +90,7 @@ let ``1/2`` = dpi * 1.<inch> / 2.
 [<Literal>]
 let inset = 14.<dot>
 [<Literal>]
-let rewardCircleSize = 18.<dot>
+let favorCircleSize = 18.<dot>
 [<Literal>]
 let smallSize = 24.<dot>
 [<Literal>]

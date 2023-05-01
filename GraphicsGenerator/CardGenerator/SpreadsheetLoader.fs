@@ -22,19 +22,21 @@ let KindCol = "C"
 [<Literal>]
 let TextCol = "D"
 [<Literal>]
-let CreditCostCol = "E"
+let TradeCostCol = "E"
 [<Literal>]
 let StrengthCostCol = "F"
 [<Literal>]
-let RewardCol = "G"
+let FavorCol = "G"
 [<Literal>]
-let CreditGainCol = "I"
+let AnimaCol = "H"
+[<Literal>]
+let TradeGainCol = "I"
 [<Literal>]
 let StrengthGainCol = "J"
 [<Literal>]
-let EnergyGainCol = "K"
+let AnimaGainCol = "K"
 [<Literal>]
-let RewardGainCol = "L"
+let FavorGainCol = "L"
 [<Literal>]
 let ShieldHealthCol = "N"
 [<Literal>]
@@ -60,22 +62,23 @@ type PartialCard = {
     Text: string
     CardCount: uint option
     ShowCardCount: bool
-    CreditCost: string option
+    TradeCost: string option
     StrengthCost: string option
-    Reward: string option
-    CreditGain: string option
+    Favor: string option
+    AnimaCost: string option
+    TradeGain: string option
     StrengthGain: string option
-    EnergyGain: string option
-    RewardGain: string option
+    AnimaGain: string option
+    FavorGain: string option
     ShieldHealth: string option
     UpgradeCost: uint option
     FlavorText: string option
 }
 
 type RowKind = 
-    | Main of PartialCard
-    | Ally of PartialCard
-    | Trash of PartialCard
+    | MainRow of PartialCard
+    | AllyRow of PartialCard
+    | TrashRow of PartialCard
     | UpgradeMain of PartialCard
     | UpgradeAlly of PartialCard
 
@@ -106,11 +109,11 @@ let codeToFaction s =
 
 let createPartial kind upgrade ally trash row =
     match kind, upgrade, ally, trash with
-    | "Ally", None, Some _, _ -> Ally row
-    | "Trash", None, _, Some _ -> Trash row
+    | "Ally", None, Some _, _ -> AllyRow row
+    | "Trash", None, _, Some _ -> TrashRow row
     | s, None, Some _, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name |> String.trimWhiteSpaces } |> UpgradeAlly 
     | s, Some _, None, _ when s.Contains "Upgrade:" -> { row with Name = String.replace "Upgrade:" "" row.Name |> String.trimWhiteSpaces } |> UpgradeMain 
-    | _ -> Main row
+    | _ -> MainRow row
 
 let colToInt (c: string) =
     let charToInt (ch: string) pos = int (Char.ConvertToUtf32 (ch, pos)) - 64
@@ -141,13 +144,14 @@ let tryReadRow (r: ParsedRow) =
             |> Option.map (fun _ -> true) 
             |> Option.defaultValue false
         let cardCount = itemAt CardCountCol r >>= tryParse<uint> 
-        let creditCost = itemAt CreditCostCol r 
+        let tradeCost = itemAt TradeCostCol r 
         let strengthCost = itemAt StrengthCostCol r 
-        let reward = itemAt RewardCol r 
-        let creditGain = itemAt CreditGainCol r 
+        let favor = itemAt FavorCol r 
+        let animaCost = itemAt AnimaCol r 
+        let tradeGain = itemAt TradeGainCol r 
         let strengthGain = itemAt StrengthGainCol r 
-        let energyGain = itemAt EnergyGainCol r 
-        let rewardGain = itemAt RewardGainCol r 
+        let animaGain = itemAt AnimaGainCol r 
+        let favorGain = itemAt FavorGainCol r 
         let shieldHealth = itemAt ShieldHealthCol r 
         let upgradeCost = itemAt UpgradeCostCol r >>= hasValue
         let flavorText = itemAt FlavorTextCol r 
@@ -160,13 +164,14 @@ let tryReadRow (r: ParsedRow) =
             Text = text
             CardCount = cardCount
             ShowCardCount = hasCardCount
-            CreditCost = creditCost
+            TradeCost = tradeCost
             StrengthCost = strengthCost
-            Reward = reward
-            CreditGain = creditGain
+            Favor = favor
+            AnimaCost = animaCost
+            TradeGain = tradeGain
             StrengthGain = strengthGain
-            EnergyGain = energyGain
-            RewardGain = rewardGain
+            AnimaGain = animaGain
+            FavorGain = favorGain
             ShieldHealth = shieldHealth
             UpgradeCost = upgradeCost
             FlavorText = flavorText
@@ -177,22 +182,32 @@ let tryReadRow (r: ParsedRow) =
 let tryParseToMeasure<[<Measure>] 'a> = Option.bind tryParse<uint> >> Option.map LanguagePrimitives.UInt32WithMeasure<'a>
 
 let parseCost kind c s =
-    match kind, tryParseToMeasure<credit> c, tryParseToMeasure<strength> s with
-    | _, Some c, None -> c |> CreditOnly |> Some
+    match kind, tryParseToMeasure<trade> c, tryParseToMeasure<strength> s with
+    | _, Some c, None -> c |> TradeOnly |> Some
     | _, None, Some s -> s |> StrengthOnly |> Some
-    // hack: only Mercenary can be either/or right now
-    | "Mercenary", Some c, Some s -> CreditOrStrength (c, s) |> Some
-    | _, Some c, Some s -> CreditAndStrength (c, s) |> Some
+    // hack: only Nomad can be either/or right now
+    | "Nomad", Some c, Some s -> TradeOrStrength (c, s) |> Some
+    | _, Some c, Some s -> TradeAndStrength (c, s) |> Some
     | _ -> None
 
-let rowToAbility (row: PartialCard) = 
-    { Text = row.Text
-      IsInfinite = false
-      Metadata = {
-        CreditGain = tryParseToMeasure row.CreditGain
-        StrengthGain = tryParseToMeasure row.StrengthGain
-        EnergyGain = tryParseToMeasure row.EnergyGain
-        RewardGain = tryParseToMeasure row.RewardGain } }
+let rowToAbility (row: RowKind) = 
+    let metadata = 
+        match row with
+        | MainRow s
+        | AllyRow s
+        | TrashRow s
+        | UpgradeMain s
+        | UpgradeAlly s -> 
+            { TradeGain = tryParseToMeasure s.TradeGain
+              StrengthGain = tryParseToMeasure s.StrengthGain
+              AnimaCost = tryParseToMeasure s.AnimaCost
+              AnimaGain = tryParseToMeasure s.AnimaGain
+              FavorGain = tryParseToMeasure s.FavorGain }
+    match row with
+    | MainRow s -> 
+        Main { MainAbility.Text = s.Text; Metadata = metadata; Cost = metadata.AnimaCost }
+    | AllyRow s -> 
+        Ally { Text = s.Text; Metadata = metadata; Faction = s.Faction }
 
 let tryCreateCard main ally trash =
     result {
@@ -200,8 +215,8 @@ let tryCreateCard main ally trash =
         let core = {
             Name = main.Name
             MainAbility = rowToAbility main
-            Cost = parseCost main.Kind main.CreditCost main.StrengthCost
-            Reward = main.Reward >>= tryParse<uint>
+            Cost = parseCost main.Kind main.TradeCost main.StrengthCost
+            Favor = main.Favor >>= tryParse<uint>
             Count = cardCount
             ShowCount = main.ShowCardCount
             Faction = main.Faction
@@ -209,18 +224,16 @@ let tryCreateCard main ally trash =
         }
         let upgraded = main.UpgradeCost |> Option.isSome
         match main.Kind with
-        | "Ship" -> 
-            return! Ship {
+        | "Human" -> 
+            return! Human {
                 Core = core
-                AllyAbility = ally
-                TrashAbility = trash
+                SecondaryAbility = ally
                 Upgraded = upgraded
             } |> Ok
-        | "Fleet" ->
-            return! Fleet {
+        | "Building" ->
+            return! Building {
                 Core = core
-                AllyAbility = ally
-                TrashAbility = trash
+                SecondaryAbility = ally
                 Upgraded = upgraded
             } |> Ok
         | "Shield" ->
@@ -230,8 +243,8 @@ let tryCreateCard main ally trash =
                 Health = health
                 Upgraded = upgraded
             } |> Ok
-        | "Mercenary" ->
-            return! Mercenary {
+        | "Nomad" ->
+            return! Nomad {
                 Core = core
             } |> Ok
         | "Monster" ->
@@ -242,7 +255,7 @@ let tryCreateCard main ally trash =
             return! Relic {
                 Core = core
             } |> Ok
-        | "Planet"
+        | "Settlement"
         | _ -> return! Error $"Unsupported row {main.Name}: %A{main} %A{ally} %A{trash}"
     }
 
@@ -251,15 +264,17 @@ let partialRowsToCard (rows: ParsedRow list) =
     validation {
         let! parsed = rows |> List.traverseResultA tryReadRow
         let! main = parsed 
-                    |> List.choose (function Main s -> Some s | _ -> None) 
+                    |> List.choose (function MainRow s -> Some s | _ -> None) 
                     |> List.tryExactlyOne 
                     |> Result.requireSome $"Could not read rows %A{parsed}: %A{rows}"
-        let ally = parsed |> tryChoose (function Ally s -> Some s | _ -> None) |>> rowToAbility
-        let trash = parsed |> tryChoose (function Trash s -> Some s | _ -> None) |>> rowToAbility
-        let upgrade = parsed |> tryChoose (function UpgradeMain s -> Some s | _ -> None)
-        let upgradeAlly = parsed |> tryChoose (function UpgradeAlly s -> Some s | _ -> None) |>> rowToAbility
+        let ally = parsed |> tryChoose (function AllyRow _ as s -> Some s | _ -> None) |>> rowToAbility
+        let trash = parsed |> tryChoose (function TrashRow _ as s -> Some s | _ -> None) |>> rowToAbility
+        do! Option.zip ally trash
+            |> Result.requireNone $"Cards cannot have both an ally and trash ability {main.Name}: %A{main} %A{ally} %A{trash}"
+        let upgrade = parsed |> tryChoose (function UpgradeMain _ as s -> Some s | _ -> None)
+        let upgradeAlly = parsed |> tryChoose (function UpgradeAlly _ as s -> Some s | _ -> None) |>> rowToAbility
         let! maybeUpgrade = upgrade |> Option.map (fun s -> tryCreateCard s upgradeAlly None) |> Option.sequenceResult
-        let! main = tryCreateCard main ally trash
+        let! main = tryCreateCard main ally
         return main, maybeUpgrade
     }
 
