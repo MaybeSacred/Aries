@@ -101,10 +101,10 @@ let rowToList2 (row: SpreadsheetXml.TableRow2) =
 let codeToFaction s =
     match s with
     | "U" | "P" | "R" | "SM" | "M" -> Some Types.unaligned
-    | "BB" -> Some Types.botBrigade
-    | "I" -> Some Types.imperium
-    | "S" -> Some Types.stellarion
-    | "RA" -> Some Types.rogueAlliance
+    | "BB" -> Some Types.sumerian
+    | "I" -> Some Types.nativeAmerican
+    | "S" -> Some Types.egyptian
+    | "RA" -> Some Types.druidic
     | _ -> None
 
 let createPartial kind upgrade ally trash row =
@@ -203,18 +203,26 @@ let rowToAbility (row: RowKind) =
               AnimaCost = tryParseToMeasure s.AnimaCost
               AnimaGain = tryParseToMeasure s.AnimaGain
               FavorGain = tryParseToMeasure s.FavorGain }
-    match row with
-    | MainRow s -> 
+    match row, metadata with
+    | UpgradeMain s, _
+    | MainRow s, _ -> 
         Main { MainAbility.Text = s.Text; Metadata = metadata; Cost = metadata.AnimaCost }
-    | AllyRow s -> 
+    | UpgradeAlly s, { AnimaCost = None } 
+    | AllyRow s, { AnimaCost = None } -> 
         Ally { Text = s.Text; Metadata = metadata; Faction = s.Faction }
+    | UpgradeAlly s, { AnimaCost = Some c } 
+    | AllyRow s, { AnimaCost = Some c } -> 
+        Anima { Text = s.Text; Metadata = metadata; Cost = c }
+    | TrashRow s, _ -> 
+        Trash { Text = s.Text; Metadata = metadata }
 
-let tryCreateCard main ally trash =
+
+let tryCreateCard main ally =
     result {
-        let! cardCount = main.CardCount |> Result.requireSome $"Cards must have a count %A{main} %A{ally} %A{trash}"
+        let! cardCount = main.CardCount |> Result.requireSome $"Cards must have a count %A{main} %A{ally}"
         let core = {
             Name = main.Name
-            MainAbility = rowToAbility main
+            MainAbility = rowToAbility (MainRow main)
             Cost = parseCost main.Kind main.TradeCost main.StrengthCost
             Favor = main.Favor >>= tryParse<uint>
             Count = cardCount
@@ -256,7 +264,7 @@ let tryCreateCard main ally trash =
                 Core = core
             } |> Ok
         | "Settlement"
-        | _ -> return! Error $"Unsupported row {main.Name}: %A{main} %A{ally} %A{trash}"
+        | _ -> return! Error $"Unsupported row {main.Name}: %A{main} %A{ally}"
     }
 
 let partialRowsToCard (rows: ParsedRow list) =
@@ -271,9 +279,11 @@ let partialRowsToCard (rows: ParsedRow list) =
         let trash = parsed |> tryChoose (function TrashRow _ as s -> Some s | _ -> None) |>> rowToAbility
         do! Option.zip ally trash
             |> Result.requireNone $"Cards cannot have both an ally and trash ability {main.Name}: %A{main} %A{ally} %A{trash}"
-        let upgrade = parsed |> tryChoose (function UpgradeMain _ as s -> Some s | _ -> None)
         let upgradeAlly = parsed |> tryChoose (function UpgradeAlly _ as s -> Some s | _ -> None) |>> rowToAbility
-        let! maybeUpgrade = upgrade |> Option.map (fun s -> tryCreateCard s upgradeAlly None) |> Option.sequenceResult
+        let! maybeUpgrade =  
+            parsed 
+            |> tryChoose (function UpgradeMain _ as s -> Some s | _ -> None)
+            |> Option.map (fun s -> tryCreateCard s upgradeAlly) |> Option.sequenceResult
         let! main = tryCreateCard main ally
         return main, maybeUpgrade
     }

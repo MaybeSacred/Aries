@@ -264,7 +264,7 @@ let all = {
     Primary = MagickColor(0xAFuy, 0xAFuy, 0xAFuy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
-        Path = @"NomadLogoUpdated.png"
+        Path = @"star-icon.webp"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
@@ -304,48 +304,59 @@ let relic = {
     Name = "Relic"
 }
 
-let imperium = {
+let indian = {
     Primary = MagickColor(0xAAuy, 0x27uy, 0x04uy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
-        Path = @"RustRedImperiumLogoUpdated.png"
+        Path = @"indian-logo-3.png"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
-    Name = "Imperium"
+    Name = "Velurian"//Velur
+}
+// todo: color purple
+let nativeAmerican = {
+    Primary = MagickColor(0xAAuy, 0x27uy, 0x04uy)
+    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Icon = Some {
+        Path = @"feather-logo-3.png"
+        ScaleCorrection = 1.0
+        Opacity = 1.
+    }
+    Name = "Hopi"
 }
 
-let stellarion = {
+let egyptian = {
     Primary = MagickColor(0x0Auy, 0xA0uy, 0xDEuy)
     Secondary = MagickColor(0x00uy, 0x1Euy, 0x6Cuy)
     Icon = Some {
-        Path = @"StellarionLogo.png"
+        Path = @"eye-of-horus.png"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
-    Name = "Stellarion"
+    Name = "Setumi"//Setum: Set + Atum
 }
 
-let botBrigade = {
+let sumerian = {
     Primary = MagickColor(0xdeuy, 0xaeuy, 0x01uy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
-        Path = @"BattleBotLogoUpdated.png"
+        Path = @"sumerian-logo.webp"
         ScaleCorrection = 0.85
         Opacity = 1.
     }
-    Name = "Bot Brigade"
+    Name = "At-Hurian"//At-Hur
 }
 
-let rogueAlliance = {
+let druidic = {
     Primary = MagickColor(0x0Buy, 0x5Fuy, 0x1Cuy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
-        Path = @"RogueAllianceLogo.webp"
+        Path = @"druid-icon.webp"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
-    Name = "Rogue Alliance"
+    Name = "Artonian"//Artonia
 }
 
 let metallicHydrogenSupplier = Human {
@@ -356,10 +367,10 @@ let metallicHydrogenSupplier = Human {
         Favor = Some 88u
         Count = 3u
         ShowCount = true
-        Faction = rogueAlliance
+        Faction = druidic
         FlavorText = Some "Flavor text"
     }
-    SecondaryAbility = Some <| Ally { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; Faction = rogueAlliance }
+    SecondaryAbility = Some <| Ally { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; Faction = druidic }
     Upgraded = true
 }
 
@@ -371,7 +382,7 @@ let imperialFighter = Human {
         Favor = Some 88u
         Count = 3u
         ShowCount = true
-        Faction = imperium
+        Faction = nativeAmerican
         FlavorText = Some "Flavor text"
     }
     SecondaryAbility = Some <| Trash { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata }
@@ -386,7 +397,7 @@ let ``343rd Batallion`` = Building {
         Favor = Some 88u
         Count = 3u
         ShowCount = true
-        Faction = botBrigade
+        Faction = sumerian
         FlavorText = Some "Flavor text"
     }
     SecondaryAbility = Some <| Trash { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata}
@@ -440,7 +451,7 @@ let refractiveShield = Shield {
         Favor = Some 88u
         Count = 3u
         ShowCount = true
-        Faction = stellarion
+        Faction = egyptian
         FlavorText = Some "Flavor text"
     }
     Health = 9u<hp>
