@@ -82,6 +82,13 @@ type Ability =
         | Anima s -> s.Text
         | Trash s -> s.Text
 
+    member x.Metadata =
+        match x with 
+        | Main s -> s.Metadata
+        | Ally s -> s.Metadata
+        | Anima s -> s.Metadata
+        | Trash s -> s.Metadata
+
 type CardCost =
     | TradeOnly of uint<trade>
     | StrengthOnly of uint<strength>

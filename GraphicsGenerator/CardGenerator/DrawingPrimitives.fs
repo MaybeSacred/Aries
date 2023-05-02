@@ -73,9 +73,12 @@ let fromDimensions width height = {
     YPixelCount = dpi * height
 }
 
-let cardBoundaries = fromDimensions (2.<inch> + 7.<inch>/16.) (3.<inch> + 7.<inch>/16.)
+// https://printninja.com/printing-resource-center/printing-options/custom-game-printing/card-dimensions/non-standard-sized-playing-cards/
+let cardBoundaries = fromDimensions 2.45<inch> 3.45<inch>
 
-let settlementBoundaries = fromDimensions (5.<inch>) (3.<inch>)
+let godBoundaries = fromDimensions (4.1<inch>) (2.95<inch>)
+
+let settlementBoundaries = fromDimensions (5.5<inch>) (3.75<inch>)
 
 let ``1/16`` = (1.<inch> / 16.) * dpi
 let ``3/32`` = (3.<inch> / 32.) * dpi

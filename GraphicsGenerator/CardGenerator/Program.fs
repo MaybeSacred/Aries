@@ -58,6 +58,7 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
            | None -> id
     let iconForAbility =
         function 
+        | Main a -> trashImage //TODO: energy image
         | Ally a -> a.Faction.Icon.Value
         | Trash a -> trashImage
         | Anima a -> trashImage
@@ -81,11 +82,11 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
     |> match ally, flavor with
        | Some at, Some flavor -> 
            drawMainTextAtHeight cardAbilityThirdPoint main.Text
-           >> drawAbility cardAbilityThirdPoint cardAbilityThirdPoint at .Icon.Value at.Text
+           >> drawAbility cardAbilityThirdPoint cardAbilityThirdPoint (iconForAbility at |> Some) at.Text
            >> drawAbility cardAbilityTwoThirdPoint cardAbilityThirdPoint None flavor
        | Some at, None -> 
            drawMainTextAtHeight cardAbilityHalfPoint main.Text
-           >> drawAbility cardAbilityHalfPoint cardAbilityHalfPoint faction.Icon.Value at.Text
+           >> drawAbility cardAbilityHalfPoint cardAbilityHalfPoint (iconForAbility at |> Some) at.Text
        | None, Some flavor -> 
            drawMainTextAtHeight cardAbilityHalfPoint main.Text
            >> drawAbility cardAbilityHalfPoint cardAbilityHalfPoint None flavor
@@ -260,10 +261,10 @@ if Directory.Exists outputPath then
 Directory.CreateDirectory outputPath |> ignore
 
 try
-    let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
-    File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
-    cards 
-    //sampleCards
+    //let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
+    //File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
+    //cards 
+    sampleCards
     |> List.collect (fun c -> konst c |> List.init (if drawAllCards then int (core c).Count else 1))
     |> List.sortBy name
     |> List.chunkBySize (if compositeCards then 9 else 1)

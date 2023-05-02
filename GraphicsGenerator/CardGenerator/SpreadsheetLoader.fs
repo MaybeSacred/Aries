@@ -222,7 +222,7 @@ let tryCreateCard main ally =
         let! cardCount = main.CardCount |> Result.requireSome $"Cards must have a count %A{main} %A{ally}"
         let core = {
             Name = main.Name
-            MainAbility = rowToAbility (MainRow main)
+            MainAbility = rowToAbility (MainRow main) |> function Main m -> m
             Cost = parseCost main.Kind main.TradeCost main.StrengthCost
             Favor = main.Favor >>= tryParse<uint>
             Count = cardCount
@@ -282,7 +282,7 @@ let partialRowsToCard (rows: ParsedRow list) =
         let upgradeAlly = parsed |> tryChoose (function UpgradeAlly _ as s -> Some s | _ -> None) |>> rowToAbility
         let! maybeUpgrade =  
             parsed 
-            |> tryChoose (function UpgradeMain _ as s -> Some s | _ -> None)
+            |> tryChoose (function UpgradeMain s -> Some s | _ -> None)
             |> Option.map (fun s -> tryCreateCard s upgradeAlly) |> Option.sequenceResult
         let! main = tryCreateCard main ally
         return main, maybeUpgrade
