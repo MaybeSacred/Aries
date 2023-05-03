@@ -9,6 +9,9 @@ open Types
 type dot
 
 [<Measure>]
+type fontPoint
+
+[<Measure>]
 type inch
 
 type DrawFrom = | TopLeft | TopRight | BottomLeft | BottomRight
@@ -26,6 +29,9 @@ let atPosition x y box = { box with X = x; Y = y }
 [<Literal>]
 let version = "v0.1"
 
+[<Literal>]
+let font = "Verdana"
+
 type TextVerticalAlignment = Top | Center | Bottom
 
 let colorWithOpacity (color: IMagickColor<byte>) opacity = MagickColor(color.R, color.G, color.B, opacity)
@@ -40,6 +46,8 @@ let animaGreen = colorWithOpacity MagickColors.LawnGreen 0x68uy
 
 [<Literal>]
 let dpi = 300.<dot/inch>
+
+
 
 type Boundaries = {
     Width: float<inch>
@@ -63,6 +71,11 @@ type ImageState = {
 //    { i with Boxes = List. List.append i.Boxes [box] }
 
 // drawFrom TopRight TopLeft ?
+
+//[<Literal>]
+let dpf = 300.<dot>/72.<fontPoint>
+
+let fontToDot f = f * dpf
 
 let fromDimensions width height = {
     Width = width
@@ -95,15 +108,15 @@ let inset = 14.<dot>
 [<Literal>]
 let favorCircleSize = 18.<dot>
 [<Literal>]
-let smallSize = 24.<dot>
+let smallSize = 6.<fontPoint>
 [<Literal>]
-let medSize = 32.<dot>
+let medSize = 8.<fontPoint>
 [<Literal>]
-let largeSize = 40.<dot>
+let largeSize = 10.<fontPoint>
 [<Literal>]
-let extraLargeSize = 48.<dot>
+let extraLargeSize = 12.<fontPoint>
 [<Literal>]
-let extraExtraLargeSize = 64.<dot>
+let extraExtraLargeSize = 16.<fontPoint>
 [<Literal>]
 let lineworkWidth = 5.<dot>
 [<Literal>]
@@ -130,17 +143,18 @@ let basePath =
     |> Array.tryItem 1
     |> Option.defaultValue @"C:\Users\jtyso\Documents\Aries\"
 
-let text (size: float<dot>) hAlignment vAlignment (startX: float<dot>) (startY: float<dot>) text (i: ImageState) =
+let text (size: float<fontPoint>) hAlignment vAlignment (startX: float<dot>) (startY: float<dot>) text (i: ImageState) =
     i.Drawables
      .PushGraphicContext()
-     .Font("Verdana")
+     .Font(font)
      .FillColor(black)
      .StrokeOpacity(Percentage 0.)
      .FillOpacity(Percentage 100.)
      .FontPointSize(float size)
      .TextAlignment(hAlignment)
+     .Density(float dpi)
      .Text(float startX, 
-        float <| match vAlignment with | Top -> startY + size | Center -> startY + size/2. | Bottom -> startY
+        float <| match vAlignment with | Top -> startY + fontToDot size | Center -> startY + (fontToDot size / 2.) | Bottom -> startY
         , text)
      .PopGraphicContext()
     i
@@ -199,17 +213,32 @@ let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (
         CompositeOperator.Over)
     i
 
-let captionText (size: float<dot>) (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (text: string) (i: ImageState) =
+let captionText (size: float<fontPoint>) (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (text: string) (i: ImageState) =
     let settings = MagickReadSettings()
-    settings.Font <- "Verdana"
+    settings.Font <- font
     settings.FontPointsize <- float size
     settings.FillColor <- black
     settings.TextGravity <- Gravity.Center
     settings.BackgroundColor <- MagickColors.Transparent
+    settings.Density <- Density(float dpi)
     settings.Height <- int height // height of text box
     settings.Width <- int width // width of text box
     use ii = new MagickImage($"caption:{text}", settings)
     i.Image.Composite(ii, int startX, int startY, CompositeOperator.Over)
+    i
+
+let pangoText (size: float<fontPoint>) (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (text: string) (i: ImageState) =
+    let settings = MagickReadSettings()
+    settings.Font <- font
+    settings.FontPointsize <- float size
+    settings.FillColor <- black
+    settings.TextGravity <- Gravity.Center
+    settings.BackgroundColor <- MagickColors.Transparent
+    settings.Density <- Density(float dpi)
+    //settings.Height <- int height // height of text box
+    //settings.Width <- int width // width of text box
+    use ii = new MagickImage($"pango:{text}", settings)
+    i.Image.Composite(ii, int startX, int (startY + height / 2.), CompositeOperator.Over)
     i
 
 //let captionTextCentered boundaries size startX startY height (text: string) (i: ImageState) =

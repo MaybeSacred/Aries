@@ -181,13 +181,13 @@ let name c = core c |> fun s -> s.Name
 // data
 
 let humanImage = {
-    Path = @"Human.webp"
+    Path = @"Ship.webp"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
 
 let buildingImage = {
-    Path = @"BuildingLogo.png"
+    Path = @"FleetLogo.png"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
@@ -205,7 +205,7 @@ let trashImage = {
 }
 
 let settlementImage = {
-    Path = @"SettlementGrayIcon.png"
+    Path = @"PlanetGrayIcon.png"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
@@ -315,7 +315,7 @@ let indian = {
     Primary = MagickColor(0xAAuy, 0x27uy, 0x04uy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
-        Path = @"indian-logo-3.png"
+        Path = @"indian-logo-3.webp"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
@@ -326,7 +326,7 @@ let nativeAmerican = {
     Primary = MagickColor(0xAAuy, 0x27uy, 0x04uy)
     Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
-        Path = @"feather-logo-3.png"
+        Path = @"feather-logo-3.webp"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
@@ -337,7 +337,7 @@ let egyptian = {
     Primary = MagickColor(0x0Auy, 0xA0uy, 0xDEuy)
     Secondary = MagickColor(0x00uy, 0x1Euy, 0x6Cuy)
     Icon = Some {
-        Path = @"eye-of-horus.png"
+        Path = @"eye-of-horus.webp"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
@@ -445,7 +445,7 @@ let refractiveShield = Shield {
     Core = {
         Name = "Refractive Shield"
         MainAbility = { 
-            Text = "Draw 1 card. Some really long text to see what happens"
+            Text = "<b>Draw:</b> 1 card. <i>Some really long text to see what happens</i>"
             Cost = None
             Metadata = { 
                 TradeGain = Some 8u<trade>
@@ -468,7 +468,7 @@ let refractiveShield = Shield {
 let settlement = Settlement {
     Core = {
         Name = "Vega"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        MainAbility = { Text = "<b>Draw:</b> 1 card. <i>Some really long text to see what happens</i>"; Metadata = defaultMetadata; Cost = None }
         Cost = Some <| TradeOnly 88u<trade>
         Favor = Some 88u
         Count = 1u

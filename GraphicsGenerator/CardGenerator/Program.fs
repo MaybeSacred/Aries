@@ -15,7 +15,7 @@ let tradeStrengthDualCostOffset = ``1/16`` + 2.<dot>
 let cardMidpoint = 2.<inch> * dpi
 let cardBottomPoint = cardBoundaries.Height * dpi - 2. * (``1/8`` + inset + quanta)
 
-let topTextBottom = inset + ``3/8`` + medSize + 2. * padding
+let topTextBottom = inset + ``3/8`` + (fontToDot medSize) + 2. * padding
 
 // settlement
 let settlementVerticalMidpoint = 2.5<inch> * dpi
@@ -48,9 +48,9 @@ let drawShieldAbilities (shield: Shield) (i: ImageState) =
 // TODO: remove inset to startX and width here, and add them to parameters
 let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bottom: float<dot>) card (i: ImageState) =
     let drawMainTextAtHeight height text =
-        captionText medSize (startX + inset + textPadding) (top + padding) (width - 2. * (inset + textPadding)) (height - 2. * padding) text
+        pangoText medSize (startX + inset + textPadding) (top + padding) (width - 2. * (inset + textPadding)) (height - 2. * padding) text
     let drawAbility abilityTop (height: float<dot>) icon text =
-        captionText medSize (startX + inset + 2. * ``5/32`` + textPadding) (top + abilityTop + padding) (width - 2. * (inset + textPadding + ``5/32``)) (height - 2. * padding) text
+        pangoText medSize (startX + inset + 2. * ``5/32`` + textPadding) (top + abilityTop + padding) (width - 2. * (inset + textPadding + ``5/32``)) (height - 2. * padding) text
         >> line darkGray lineworkWidth (startX + inset) (top + abilityTop) (startX + width - inset) (top + abilityTop)
         >> outlinedCircle (startX + ``5/32`` + inset + abilityIconPadding) (top + abilityTop + height / 2.) ``5/32``
         >> match icon with 
@@ -65,7 +65,7 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
     let cardAbilityHalfPoint = (bottom - top) / 2.
     let cardAbilityThirdPoint = (bottom - top) / 3.
     let cardAbilityTwoThirdPoint = (bottom - top) * 2. / 3.
-    let { MainAbility = main; Faction = faction; FlavorText = flavor }, ally = 
+    let { MainAbility = main; FlavorText = flavor }, ally = 
         match card with
         | Human { Core = core; SecondaryAbility = ally } 
         | Building { Core = core; SecondaryAbility = ally } ->
@@ -171,15 +171,15 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // name
     |> captionText largeSize (iconCostDiameter + inset + padding) inset (boundaries.PixelWidth - 2. * (iconCostDiameter + inset + padding)) ``3/8`` data.Name
     // faction-kind banner
-    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.PixelWidth - 2. * (iconCostDiameter + inset + padding)) (smallSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{data.Faction.Name} {cardKind card}"""
+    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.PixelWidth - 2. * (iconCostDiameter + inset + padding)) (fontToDot smallSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{data.Faction.Name} {cardKind card}"""
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - textPadding) version
     // count
     |> (if data.ShowCount then List.init (int data.Count) id else []
-        |> List.fold (fun s i -> s >> filledCircle black darkGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize / 2.) (favorCircleSize / 2.)) id)
+        |> List.fold (fun s i -> s >> filledCircle black darkGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi  - (float i) * (fontToDot smallSize + padding)) (boundaries.PixelHeight - inset - padding - (fontToDot smallSize / 2.)) (favorCircleSize / 2.)) id)
 
 let drawSettlement boundaries (card: Settlement) (i: ImageState) =
-    let nameBottom = largeSize + inset + 2. * textPadding
+    let nameBottom = fontToDot largeSize + inset + 2. * textPadding
     //let leftRectangle = { boundaries with Width }
     let drawLogo (i: ImageData) =
         let w = (settlementVerticalMidpoint - (inset + 2. * padding + ``1/2``))
@@ -208,7 +208,7 @@ let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     // name
     |> captionText largeSize (``3/8`` + inset) inset (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (smallSize + 2. * padding) (cardKind <| Settlement card)
+    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (cardKind <| Settlement card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.PixelWidth - inset - padding) (boundaries.PixelHeight - inset - padding) version
     //|> (List.init (Option.defaultValue 0u card.Core.Count |> int) id
@@ -252,8 +252,8 @@ let drawToFile (path: string) compositeCards cards =
             List.head cards |> name |> String.filter (fun c -> c <> ' ')
     image.Write $"{path}\{name}.png"
 
-let drawAllCards = true
-let compositeCards = true
+let drawAllCards = false
+let compositeCards = false
 
 let outputPath = System.IO.Path.Combine(basePath, GeneratedFolder)
 if Directory.Exists outputPath then
