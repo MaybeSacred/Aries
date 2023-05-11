@@ -25,7 +25,6 @@ type ImageData = {
 
 type FactionData = {
     Primary: MagickColor
-    Secondary: MagickColor
     Icon: ImageData option
     Name: string
 }
@@ -89,17 +88,25 @@ type Ability =
         | Anima s -> s.Metadata
         | Trash s -> s.Metadata
 
-type CardCost =
-    | TradeOnly of uint<trade>
-    | StrengthOnly of uint<strength>
-    | TradeOrStrength of trade: uint<trade> * strength: uint<strength>
-    | TradeAndStrength of trade: uint<trade> * strength: uint<strength>
+type CardCost = {
+    Trade: uint<trade> option
+    Strength: uint<strength> option
+    Anima: uint<anima> option
+}
+
+type Slot =
+    | GodSlot
+    | FortificationSlot
+    | BuildingSlot
+    | Garrison
 
 // it's card-core parkour
+// TODO: add card image
 type CardCore = {
     Name: string
     MainAbility: MainAbility
-    Cost: CardCost option
+    Cost: CardCost
+    Image: ImageData
     Count: uint
     ShowCount: bool
     Favor: uint option
@@ -107,9 +114,15 @@ type CardCore = {
     FlavorText: string option
 }
 
-type BuildingOrHuman = {
+type Human = {
     Core: CardCore
     SecondaryAbility: Ability option
+    Upgraded: bool
+}
+
+type Building = {
+    Core: CardCore
+    RightSlot: Slot option
     Upgraded: bool
 }
 
@@ -121,17 +134,18 @@ type Monster = {
     Core: CardCore
 }
 
-type God = {
-    Core: CardCore
-}
-
 type Relic = {
     Core: CardCore
 }
+
+type God = {
+    Core: CardCore
+}
 // aegis? battlement? fortification?
-type Shield = {
+type Fortification = {
     Core: CardCore
     Health: uint<hp>
+    LeftSlot: Slot option
     Upgraded: bool
 }
 
@@ -140,13 +154,20 @@ type Shield = {
 type Settlement = {
     Core: CardCore
     Health: uint<hp>
+    SecondaryAbility: Ability option
+    TertiaryAbility: Ability option
+    LeftSlot: Slot option
+    RightSlot: Slot option
+    // top slot can only have a God
+    TopSlot: Slot option
+    GarrisonSlot: Slot list
     //FavorSchedule: FavorSchedule
 }
 
 type Card = 
-    | Shield of Shield 
-    | Human of BuildingOrHuman
-    | Building of BuildingOrHuman
+    | Fortification of Fortification 
+    | Human of Human
+    | Building of Building
     | Settlement of Settlement
     | God of God
     | Nomad of Nomad
@@ -155,7 +176,7 @@ type Card =
 
 let cardKind =
     function  
-    | Shield _ -> "Shield"
+    | Fortification _ -> "Fortification"
     | Human _ -> "Human"
     | Building _ -> "Building"
     | Settlement _ -> "Settlement"
@@ -166,7 +187,7 @@ let cardKind =
 
 let core =
     function
-    | Shield { Core = c } 
+    | Fortification { Core = c } 
     | Human { Core = c } 
     | Building { Core = c } 
     | Settlement { Core = c }
@@ -181,19 +202,19 @@ let name c = core c |> fun s -> s.Name
 // data
 
 let humanImage = {
-    Path = @"Ship.webp"
+    Path = @"female-hero.webp"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
 
 let buildingImage = {
-    Path = @"FleetLogo.png"
+    Path = @"temple.webp"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
 
-let shieldImage = {
-    Path = @"ShieldOutlineLogoUpdated.png"
+let fortificationImage = {
+    Path = @"fort.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
@@ -205,71 +226,54 @@ let trashImage = {
 }
 
 let settlementImage = {
-    Path = @"PlanetGrayIcon.png"
+    Path = @"settlement.webp"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
 
 let relicImage = {
-    Path = @"RelicImage.png"
+    Path = @"Relic.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
-let spaceNomadImage = {
-    Path = @"SpaceNomadUpdated.webp"
+let nomadImage = {
+    Path = @"cow-sumer-god.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
-let spaceMonster1Image = {
-    Path = @"SpaceMonster1.webp"
+let godImage = {
+    Path = @"cow-sumer-god.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
-let spaceMonster2Image = {
-    Path = @"SpaceMonster2.webp"
+let monster1Image = {
+    Path = @"mist-dragon.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
-let spaceMonster3Image = {
-    Path = @"SpaceMonster3.webp"
-    ScaleCorrection = 0.98
-    Opacity = 0.8
-}
-
-let spaceMonster4Image = {
-    Path = @"SpaceMonster4.webp"
-    ScaleCorrection = 0.98
-    Opacity = 0.8
-}
-
-let spaceMonster5Image = {
-    Path = @"SpaceMonster5.webp"
+let monster2Image = {
+    Path = @"monster-flying.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
 let spaceMonsterIcons = [
-    spaceMonster1Image
-    spaceMonster2Image
-    spaceMonster3Image
-    spaceMonster4Image
-    spaceMonster5Image
+    monster1Image
+    monster2Image
 ]
 
 let unaligned = {
-    Primary = MagickColor(0xAFuy, 0xAFuy, 0xAFuy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.Gray
     Icon = None
     Name = "Unaligned"
 }
 
 let all = {
-    Primary = MagickColor(0xAFuy, 0xAFuy, 0xAFuy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.AntiqueWhite
     Icon = Some {
         Path = @"star-icon.webp"
         ScaleCorrection = 1.0
@@ -279,10 +283,9 @@ let all = {
 }
 
 let nomad = {
-    Primary = MagickColor(0x5Fuy, 0x68uy, 0x7Auy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.SandyBrown
     Icon = Some {
-        Path = @"NomadLogoUpdated.png"
+        Path = @"BattleBotLogoUpdated.png"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
@@ -290,8 +293,7 @@ let nomad = {
 }
 
 let monster = {
-    Primary = MagickColor(0x6Fuy, 0x6Fuy, 0x7Auy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.DarkRed
     Icon = Some {
         Path = @"MonsterLogoUpdated.webp"
         ScaleCorrection = 1.0
@@ -302,7 +304,6 @@ let monster = {
 
 let relic = {
     Primary = MagickColors.Purple
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
     Icon = Some {
         Path = @"RelicLogo.webp"
         ScaleCorrection = 1.0
@@ -311,9 +312,19 @@ let relic = {
     Name = "Relic"
 }
 
+let ancient = {
+    // dark gray
+    Primary = MagickColor(0x0Auy, 0x0Auy, 0x1Fuy)
+    Icon = Some {
+        Path = @"indian-logo-3.webp"
+        ScaleCorrection = 1.0
+        Opacity = 1.
+    }
+    Name = "Ancient"//Velur
+}
+
 let indian = {
-    Primary = MagickColor(0xAAuy, 0x27uy, 0x04uy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.Violet
     Icon = Some {
         Path = @"indian-logo-3.webp"
         ScaleCorrection = 1.0
@@ -323,8 +334,7 @@ let indian = {
 }
 // todo: color purple
 let nativeAmerican = {
-    Primary = MagickColor(0xAAuy, 0x27uy, 0x04uy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.PaleVioletRed
     Icon = Some {
         Path = @"feather-logo-3.webp"
         ScaleCorrection = 1.0
@@ -334,8 +344,7 @@ let nativeAmerican = {
 }
 
 let egyptian = {
-    Primary = MagickColor(0x0Auy, 0xA0uy, 0xDEuy)
-    Secondary = MagickColor(0x00uy, 0x1Euy, 0x6Cuy)
+    Primary = MagickColors.AliceBlue
     Icon = Some {
         Path = @"eye-of-horus.webp"
         ScaleCorrection = 1.0
@@ -345,8 +354,7 @@ let egyptian = {
 }
 
 let sumerian = {
-    Primary = MagickColor(0xdeuy, 0xaeuy, 0x01uy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.DarkOrange
     Icon = Some {
         Path = @"sumerian-logo.webp"
         ScaleCorrection = 0.85
@@ -356,8 +364,7 @@ let sumerian = {
 }
 
 let druidic = {
-    Primary = MagickColor(0x0Buy, 0x5Fuy, 0x1Cuy)
-    Secondary = MagickColor(0x52uy, 0x13uy, 0x02uy)
+    Primary = MagickColors.ForestGreen
     Icon = Some {
         Path = @"druid-icon.webp"
         ScaleCorrection = 1.0
@@ -366,12 +373,13 @@ let druidic = {
     Name = "Artonian"//Artonia
 }
 
-let metallicHydrogenSupplier = Human {
+let hero = {
     Core = {
-        Name = "Metallic Hydrogen Supplier"
+        Name = "Hero"
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
-        Cost = Some <| TradeOnly 88u<trade>
+        Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None }
         Favor = Some 88u
+        Image = humanImage
         Count = 3u
         ShowCount = true
         Faction = druidic
@@ -381,71 +389,69 @@ let metallicHydrogenSupplier = Human {
     Upgraded = true
 }
 
-let imperialFighter = Human {
+let bookOfTheDead = Relic {
     Core = {
-        Name = "Imperial Fighter"
+        Name = "Book of the Dead"
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
-        Cost = Some <| TradeOnly 88u<trade>
+        Cost = { Trade = None; Strength = None; Anima = Some 88u<anima> } 
         Favor = Some 88u
+        Image = relicImage
         Count = 3u
         ShowCount = true
-        Faction = nativeAmerican
+        Faction = relic
         FlavorText = Some "Flavor text"
     }
-    SecondaryAbility = Some <| Trash { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata }
-    Upgraded = false
 }
 
-let ``343rd Batallion`` = Building {
+let building = Building {
     Core = {
-        Name = "343rd Batallion"
+        Name = "Temple of Babylon"
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
-        Cost = Some <| StrengthOnly 88u<strength>
+        Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = None } 
         Favor = Some 88u
+        Image = buildingImage
         Count = 3u
         ShowCount = true
         Faction = sumerian
         FlavorText = Some "Flavor text"
     }
-    SecondaryAbility = Some <| Trash { Text = "Scrap this card. Gain 1 Strength"; Metadata = defaultMetadata}
-    Upgraded = true
+    Upgraded = false
+    RightSlot = Some GodSlot
 }
 
-let bigTrade = Human {
+let ogre = Monster {
     Core = {
-        Name = "Big Trade"
+        Name = "Ogre"
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
-        Cost = Some <| TradeOnly 22u<trade>
+        Cost = { Trade = None; Strength = Some 88u<strength>; Anima = None } 
         Favor = Some 1u
+        Image = monster1Image
         Count = 1u
         ShowCount = false
-        Faction = unaligned
+        Faction = monster
         FlavorText = Some "Flavor text"
     }
-    SecondaryAbility = None
-    Upgraded = false
 }
 
-let bigLaser = Human {
+let camelArcher = Nomad {
     Core = {
-        Name = "Big Laser"
+        Name = "Camel Archer"
         MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
-        Cost = Some <| TradeOrStrength (88u<trade>, 88u<strength>)
+        Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = None } 
         Favor = Some 1u
+        Image = nomadImage
         Count = 1u
         ShowCount = false
-        Faction = unaligned
+        Faction = nomad
         FlavorText = Some "Flavor text"
     }
-    SecondaryAbility = None
-    Upgraded = false
 }
 
-let refractiveShield = Shield {
+let fort = Fortification {
     Core = {
-        Name = "Refractive Shield"
+        Name = "Egyptian Fort"
         MainAbility = { 
-            Text = "<b>Draw:</b> 1 card. <i>Some really long text to see what happens</i>"
+            Text = "Draw 1 card. Some really long text to see what happens"
             Cost = None
             Metadata = { 
                 TradeGain = Some 8u<trade>
@@ -454,31 +460,76 @@ let refractiveShield = Shield {
                 AnimaCost = Some 8u<anima>
                 FavorGain = Some 8u<favor>
         } }
-        Cost = Some <| TradeAndStrength (88u<trade>, 88u<strength>)
+        Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = None } 
         Favor = Some 88u
+        Image = fortificationImage
         Count = 3u
         ShowCount = true
-        Faction = egyptian
+        Faction = indian
         FlavorText = Some "Flavor text"
     }
     Health = 9u<hp>
     Upgraded = true
+    LeftSlot = Some FortificationSlot
+}
+
+let zeus = God {
+    Core = {
+        Name = "Zeus"
+        MainAbility = { 
+            Text = "Draw 1 card. Some really long text to see what happens"
+            Cost = None
+            Metadata = { 
+                TradeGain = Some 8u<trade>
+                StrengthGain = Some 8u<strength>
+                AnimaGain = Some 8u<anima>
+                AnimaCost = Some 8u<anima>
+                FavorGain = Some 8u<favor>
+        } }
+        Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = Some 88u<anima> } 
+        Favor = Some 88u
+        Image = godImage
+        Count = 3u
+        ShowCount = true
+        Faction = ancient
+        FlavorText = Some "Flavor text"
+    }
 }
 
 let settlement = Settlement {
     Core = {
-        Name = "Vega"
-        MainAbility = { Text = "<b>Draw:</b> 1 card. <i>Some really long text to see what happens</i>"; Metadata = defaultMetadata; Cost = None }
-        Cost = Some <| TradeOnly 88u<trade>
+        Name = "Vegas"
+        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        Cost = { Trade = Some 88u<trade>; Strength = None; Anima = Some 88u<anima> } 
         Favor = Some 88u
+        Image = settlementImage
         Count = 1u
         ShowCount = true
         Faction = unaligned
         FlavorText = Some "Flavor text"
     }
     Health = 8u<hp>
+    SecondaryAbility = Some <| Anima { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = 88u<anima> }
+    TertiaryAbility = Some <| Anima { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = 2u<anima> }
+    LeftSlot = Some FortificationSlot
+    TopSlot = Some GodSlot
+    RightSlot = Some BuildingSlot
+    GarrisonSlot = [FortificationSlot; Garrison; BuildingSlot]
     //FavorSchedule = { First = 3u<favor>; Second = 2u<favor>; Third = 1u<favor> }
 }
 
 let sampleCards = 
-    [settlement; metallicHydrogenSupplier; bigTrade; bigLaser; imperialFighter; ``343rd Batallion``; refractiveShield]
+    [settlement; 
+     Human hero; 
+     Human { hero with Core = { hero.Core with Faction = nativeAmerican } }; 
+     Human { hero with Core = { hero.Core with Faction = unaligned } }; 
+     Human { hero with Core = { hero.Core with Faction = ancient } }; 
+     Human { hero with Core = { hero.Core with Faction = egyptian } }; 
+     Human { hero with Core = { hero.Core with Faction = sumerian } }; 
+     Human { hero with Core = { hero.Core with Faction = indian } }; 
+     ogre; 
+     zeus; 
+     fort;
+     bookOfTheDead; 
+     building; 
+     camelArcher]

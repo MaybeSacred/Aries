@@ -38,7 +38,7 @@ let AnimaGainCol = "K"
 [<Literal>]
 let FavorGainCol = "L"
 [<Literal>]
-let ShieldHealthCol = "N"
+let FortificationHealthCol = "N"
 [<Literal>]
 let UpgradeCostCol = "U"
 [<Literal>]
@@ -70,7 +70,7 @@ type PartialCard = {
     StrengthGain: string option
     AnimaGain: string option
     FavorGain: string option
-    ShieldHealth: string option
+    FortificationHealth: string option
     UpgradeCost: uint option
     FlavorText: string option
 }
@@ -152,7 +152,7 @@ let tryReadRow (r: ParsedRow) =
         let strengthGain = itemAt StrengthGainCol r 
         let animaGain = itemAt AnimaGainCol r 
         let favorGain = itemAt FavorGainCol r 
-        let shieldHealth = itemAt ShieldHealthCol r 
+        let fortificationHealth = itemAt FortificationHealthCol r 
         let upgradeCost = itemAt UpgradeCostCol r >>= hasValue
         let flavorText = itemAt FlavorTextCol r 
         let ally = itemAt AllyCol r >>= hasValue
@@ -172,7 +172,7 @@ let tryReadRow (r: ParsedRow) =
             StrengthGain = strengthGain
             AnimaGain = animaGain
             FavorGain = favorGain
-            ShieldHealth = shieldHealth
+            FortificationHealth = fortificationHealth
             UpgradeCost = upgradeCost
             FlavorText = flavorText
         }
@@ -181,14 +181,8 @@ let tryReadRow (r: ParsedRow) =
 
 let tryParseToMeasure<[<Measure>] 'a> = Option.bind tryParse<uint> >> Option.map LanguagePrimitives.UInt32WithMeasure<'a>
 
-let parseCost kind c s =
-    match kind, tryParseToMeasure<trade> c, tryParseToMeasure<strength> s with
-    | _, Some c, None -> c |> TradeOnly |> Some
-    | _, None, Some s -> s |> StrengthOnly |> Some
-    // hack: only Nomad can be either/or right now
-    | "Nomad", Some c, Some s -> TradeOrStrength (c, s) |> Some
-    | _, Some c, Some s -> TradeAndStrength (c, s) |> Some
-    | _ -> None
+let parseCost c s a =
+    { Trade = tryParseToMeasure<trade> c; Strength = tryParseToMeasure<strength> s; Anima = tryParseToMeasure<anima> a }
 
 let rowToAbility (row: RowKind) = 
     let metadata = 
@@ -223,8 +217,9 @@ let tryCreateCard main ally =
         let core = {
             Name = main.Name
             MainAbility = rowToAbility (MainRow main) |> function Main m -> m
-            Cost = parseCost main.Kind main.TradeCost main.StrengthCost
+            Cost = parseCost main.TradeCost main.StrengthCost main.AnimaCost
             Favor = main.Favor >>= tryParse<uint>
+            Image = humanImage
             Count = cardCount
             ShowCount = main.ShowCardCount
             Faction = main.Faction
@@ -233,37 +228,53 @@ let tryCreateCard main ally =
         let upgraded = main.UpgradeCost |> Option.isSome
         match main.Kind with
         | "Human" -> 
-            return! Human {
+            return Human {
                 Core = core
                 SecondaryAbility = ally
                 Upgraded = upgraded
-            } |> Ok
+            }
         | "Building" ->
-            return! Building {
+            return Building {
                 Core = core
-                SecondaryAbility = ally
+                RightSlot = None
                 Upgraded = upgraded
-            } |> Ok
-        | "Shield" ->
-            let! health = tryParseToMeasure main.ShieldHealth |> Result.requireSome "Health must be provided for shield cards"
-            return! Shield {
+            }
+        | "Fortification" ->
+            let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome "Health must be provided for fortification cards"
+            return Fortification {
                 Core = core
                 Health = health
+                LeftSlot = None
                 Upgraded = upgraded
-            } |> Ok
+            }
         | "Nomad" ->
-            return! Nomad {
+            return Nomad {
                 Core = core
-            } |> Ok
+            }
         | "Monster" ->
-            return! Monster {
+            return Monster {
                 Core = core
-            } |> Ok
+            }
         | "Relic" ->
-            return! Relic {
+            return Relic {
                 Core = core
-            } |> Ok
-        | "Settlement"
+            }
+        | "Settlement" ->
+            let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome "Health must be provided for settlement cards"
+            return Settlement {
+                Core = core
+                Health = health
+                SecondaryAbility = None
+                TertiaryAbility = None
+                LeftSlot = None
+                TopSlot = None
+                RightSlot = None
+                GarrisonSlot = []
+            }
+        | "God" ->
+            return God {
+                Core = core
+            }
         | _ -> return! Error $"Unsupported row {main.Name}: %A{main} %A{ally}"
     }
 

@@ -14,6 +14,21 @@ type fontPoint
 [<Measure>]
 type inch
 
+type PangoWrap = Word | Char | ``Word-Char``
+// https://imagemagick.org/script/defines.php
+// pango:single-paragraph
+type PangoReadDefines() =
+    // pango:wrap=word|char|word-char
+    member val Wrap: PangoWrap option = None with get, set
+    interface IReadDefines with
+        member x.Format = MagickFormat.Pango
+        member x.Defines = 
+            seq {
+                if (x.Wrap.IsSome) then
+                    yield MagickDefine(MagickFormat.Pango, "wrap", 
+                        match x.Wrap.Value with Word -> "word" | Char -> "char" | ``Word-Char`` -> "word-char")
+            }
+
 type DrawFrom = | TopLeft | TopRight | BottomLeft | BottomRight
 
 type Box = {
@@ -38,10 +53,10 @@ let colorWithOpacity (color: IMagickColor<byte>) opacity = MagickColor(color.R, 
 
 let darkGray = MagickColor(0x14uy, 0x1Duy, 0x1Duy)
 let medGray = MagickColor(0x46uy, 0x58uy, 0x58uy)
-let black = MagickColor(0x08uy, 0x08uy, 0x08uy)
+let black = MagickColor(0x00uy, 0x00uy, 0x00uy)
 let tradeGold = colorWithOpacity MagickColors.Gold 0x70uy
 let strengthRed = colorWithOpacity MagickColors.Red 0x70uy
-let shieldBlue = colorWithOpacity MagickColors.CornflowerBlue 0x68uy
+let healthBlue = colorWithOpacity MagickColors.CornflowerBlue 0x68uy
 let animaGreen = colorWithOpacity MagickColors.LawnGreen 0x68uy
 
 [<Literal>]
@@ -50,10 +65,10 @@ let dpi = 300.<dot/inch>
 
 
 type Boundaries = {
-    Width: float<inch>
-    Height: float<inch>
-    PixelWidth: float<dot>
-    PixelHeight: float<dot>
+    WidthInInches: float<inch>
+    HeightInInches: float<inch>
+    Width: float<dot>
+    Height: float<dot>
     XPixelCount: float<dot>
     YPixelCount: float<dot>
 }
@@ -73,15 +88,15 @@ type ImageState = {
 // drawFrom TopRight TopLeft ?
 
 //[<Literal>]
-let dpf = 300.<dot>/72.<fontPoint>
+let dotsPerFontPoint = 300.<dot>/72.<fontPoint>
 
-let fontToDot f = f * dpf
+let fontToDot f = f * dotsPerFontPoint
 
 let fromDimensions width height = {
-    Width = width
-    Height = height
-    PixelWidth = dpi * width - 1.<dot>
-    PixelHeight = dpi * height - 1.<dot>
+    WidthInInches = width
+    HeightInInches = height
+    Width = dpi * width - 1.<dot>
+    Height = dpi * height - 1.<dot>
     XPixelCount = dpi * width
     YPixelCount = dpi * height
 }
@@ -89,9 +104,9 @@ let fromDimensions width height = {
 // https://printninja.com/printing-resource-center/printing-options/custom-game-printing/card-dimensions/non-standard-sized-playing-cards/
 let cardBoundaries = fromDimensions 2.45<inch> 3.45<inch>
 
-let godBoundaries = fromDimensions (4.1<inch>) (2.95<inch>)
+let godBoundaries = fromDimensions 4.1<inch> 2.95<inch>
 
-let settlementBoundaries = fromDimensions (5.5<inch>) (3.75<inch>)
+let settlementBoundaries = fromDimensions 5.5<inch> 3.75<inch>
 
 let ``1/16`` = (1.<inch> / 16.) * dpi
 let ``3/32`` = (3.<inch> / 32.) * dpi
@@ -232,13 +247,19 @@ let pangoText (size: float<fontPoint>) (startX: float<dot>) (startY: float<dot>)
     settings.Font <- font
     settings.FontPointsize <- float size
     settings.FillColor <- black
+    
     settings.TextGravity <- Gravity.Center
+    let pango = PangoReadDefines()
+    pango.Wrap <- Some Word
+    settings.Defines <- pango
+    settings.Debug <- true
     settings.BackgroundColor <- MagickColors.Transparent
     settings.Density <- Density(float dpi)
-    //settings.Height <- int height // height of text box
-    //settings.Width <- int width // width of text box
+    settings.Verbose <- true
+    settings.Height <- int height // height of text box
+    settings.Width <- int width // width of text box
     use ii = new MagickImage($"pango:{text}", settings)
-    i.Image.Composite(ii, int startX, int (startY + height / 2.), CompositeOperator.Over)
+    i.Image.Composite(ii, int startX, int startY, CompositeOperator.Over)
     i
 
 //let captionTextCentered boundaries size startX startY height (text: string) (i: ImageState) =
