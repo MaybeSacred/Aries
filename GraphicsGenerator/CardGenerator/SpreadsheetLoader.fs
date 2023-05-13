@@ -198,12 +198,14 @@ let rowToAbility (row: RowKind) =
               AnimaGain = tryParseToMeasure s.AnimaGain
               FavorGain = tryParseToMeasure s.FavorGain }
     match row, metadata with
-    | UpgradeMain s, _
-    | MainRow s, _ -> 
-        Main { MainAbility.Text = s.Text; Metadata = metadata; Cost = metadata.AnimaCost }
+    | UpgradeMain s, { AnimaCost = None }
+    | MainRow s, { AnimaCost = None } -> 
+        Plain { PlainAbility.Text = s.Text; Metadata = metadata }
     | UpgradeAlly s, { AnimaCost = None } 
     | AllyRow s, { AnimaCost = None } -> 
         Ally { Text = s.Text; Metadata = metadata; Faction = s.Faction }
+    | UpgradeMain s, { AnimaCost = Some c }
+    | MainRow s, { AnimaCost = Some c }
     | UpgradeAlly s, { AnimaCost = Some c } 
     | AllyRow s, { AnimaCost = Some c } -> 
         Anima { Text = s.Text; Metadata = metadata; Cost = c }
@@ -216,10 +218,10 @@ let tryCreateCard main ally =
         let! cardCount = main.CardCount |> Result.requireSome $"Cards must have a count %A{main} %A{ally}"
         let core = {
             Name = main.Name
-            MainAbility = rowToAbility (MainRow main) |> function Main m -> m
+            MainAbility = MainRow main |> rowToAbility 
             Cost = parseCost main.TradeCost main.StrengthCost main.AnimaCost
             Favor = main.Favor >>= tryParse<uint>
-            Image = humanImage
+            Image = femaleHumanImage
             Count = cardCount
             ShowCount = main.ShowCardCount
             Faction = main.Faction
@@ -251,8 +253,8 @@ let tryCreateCard main ally =
             return Nomad {
                 Core = core
             }
-        | "Monster" ->
-            return Monster {
+        | "Creature" ->
+            return Creature {
                 Core = core
             }
         | "Relic" ->

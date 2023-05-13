@@ -45,10 +45,9 @@ let defaultMetadata = {
     FavorGain = None
 }
 
-type MainAbility = {
+type PlainAbility = {
     Text: string 
     Metadata: AbilityMetadata
-    Cost: uint<anima> option
 }
 
 type AllyAbility = {
@@ -69,21 +68,21 @@ type AnimaAbility = {
 }
 
 type Ability = 
-    | Main of MainAbility 
+    | Plain of PlainAbility 
     | Ally of AllyAbility 
     | Anima of AnimaAbility 
     | Trash of TrashAbility
 
     member x.Text =
         match x with 
-        | Main s -> s.Text
+        | Plain s -> s.Text
         | Ally s -> s.Text
         | Anima s -> s.Text
         | Trash s -> s.Text
 
     member x.Metadata =
         match x with 
-        | Main s -> s.Metadata
+        | Plain s -> s.Metadata
         | Ally s -> s.Metadata
         | Anima s -> s.Metadata
         | Trash s -> s.Metadata
@@ -104,7 +103,7 @@ type Slot =
 // TODO: add card image
 type CardCore = {
     Name: string
-    MainAbility: MainAbility
+    MainAbility: Ability
     Cost: CardCost
     Image: ImageData
     Count: uint
@@ -130,7 +129,7 @@ type Nomad = {
     Core: CardCore
 }
 
-type Monster = {
+type Creature = {
     Core: CardCore
 }
 
@@ -171,7 +170,7 @@ type Card =
     | Settlement of Settlement
     | God of God
     | Nomad of Nomad
-    | Monster of Monster
+    | Creature of Creature
     | Relic of Relic
 
 let cardKind =
@@ -182,7 +181,7 @@ let cardKind =
     | Settlement _ -> "Settlement"
     | God _ -> "God"
     | Nomad _ -> "Nomad"
-    | Monster _ -> "Monster"
+    | Creature _ -> "Creature"
     | Relic _ -> "Relic"
 
 let core =
@@ -193,7 +192,7 @@ let core =
     | Settlement { Core = c }
     | God { Core = c }
     | Nomad { Core = c }
-    | Monster { Core = c }
+    | Creature { Core = c }
     | Relic { Core = c }
         -> c
 
@@ -201,8 +200,14 @@ let name c = core c |> fun s -> s.Name
 
 // data
 
-let humanImage = {
+let femaleHumanImage = {
     Path = @"female-hero.webp"
+    ScaleCorrection = 0.98
+    Opacity = 1.
+}
+
+let maleHumanImage = {
+    Path = @"male-champion.webp"
     ScaleCorrection = 0.98
     Opacity = 1.
 }
@@ -249,21 +254,21 @@ let godImage = {
     Opacity = 0.8
 }
 
-let monster1Image = {
+let creature1Image = {
     Path = @"mist-dragon.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
-let monster2Image = {
+let creature2Image = {
     Path = @"monster-flying.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
 }
 
-let spaceMonsterIcons = [
-    monster1Image
-    monster2Image
+let spaceCreatureIcons = [
+    creature1Image
+    creature2Image
 ]
 
 let unaligned = {
@@ -292,14 +297,14 @@ let nomad = {
     Name = "Nomad"
 }
 
-let monster = {
+let creature = {
     Primary = MagickColors.DarkRed
     Icon = Some {
         Path = @"MonsterLogoUpdated.webp"
         ScaleCorrection = 1.0
         Opacity = 1.
     }
-    Name = "Monster"
+    Name = "Creature"
 }
 
 let relic = {
@@ -320,11 +325,11 @@ let ancient = {
         ScaleCorrection = 1.0
         Opacity = 1.
     }
-    Name = "Ancient"//Velur
+    Name = "Ancient"
 }
 
 let indian = {
-    Primary = MagickColors.Violet
+    Primary = MagickColors.RebeccaPurple
     Icon = Some {
         Path = @"indian-logo-3.webp"
         ScaleCorrection = 1.0
@@ -334,7 +339,7 @@ let indian = {
 }
 // todo: color purple
 let nativeAmerican = {
-    Primary = MagickColors.PaleVioletRed
+    Primary = MagickColors.LightSeaGreen
     Icon = Some {
         Path = @"feather-logo-3.webp"
         ScaleCorrection = 1.0
@@ -344,7 +349,7 @@ let nativeAmerican = {
 }
 
 let egyptian = {
-    Primary = MagickColors.AliceBlue
+    Primary = MagickColors.CadetBlue
     Icon = Some {
         Path = @"eye-of-horus.webp"
         ScaleCorrection = 1.0
@@ -360,7 +365,7 @@ let sumerian = {
         ScaleCorrection = 0.85
         Opacity = 1.
     }
-    Name = "At-Hurian"//At-Hur
+    Name = "Hitturian"//Hitturia
 }
 
 let druidic = {
@@ -376,10 +381,10 @@ let druidic = {
 let hero = {
     Core = {
         Name = "Hero"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None }
         Favor = Some 88u
-        Image = humanImage
+        Image = femaleHumanImage
         Count = 3u
         ShowCount = true
         Faction = druidic
@@ -392,7 +397,7 @@ let hero = {
 let bookOfTheDead = Relic {
     Core = {
         Name = "Book of the Dead"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = None; Strength = None; Anima = Some 88u<anima> } 
         Favor = Some 88u
         Image = relicImage
@@ -406,8 +411,8 @@ let bookOfTheDead = Relic {
 let building = Building {
     Core = {
         Name = "Temple of Babylon"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
-        Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = None } 
+        MainAbility = Anima { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = 88u<anima> }
+        Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None } 
         Favor = Some 88u
         Image = buildingImage
         Count = 3u
@@ -419,16 +424,16 @@ let building = Building {
     RightSlot = Some GodSlot
 }
 
-let ogre = Monster {
+let ogre = Creature {
     Core = {
         Name = "Ogre"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = None; Strength = Some 88u<strength>; Anima = None } 
         Favor = Some 1u
-        Image = monster1Image
+        Image = creature1Image
         Count = 1u
         ShowCount = false
-        Faction = monster
+        Faction = creature
         FlavorText = Some "Flavor text"
     }
 }
@@ -436,8 +441,8 @@ let ogre = Monster {
 let camelArcher = Nomad {
     Core = {
         Name = "Camel Archer"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
-        Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = None } 
+        MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None } 
         Favor = Some 1u
         Image = nomadImage
         Count = 1u
@@ -450,9 +455,8 @@ let camelArcher = Nomad {
 let fort = Fortification {
     Core = {
         Name = "Egyptian Fort"
-        MainAbility = { 
+        MainAbility = Plain { 
             Text = "Draw 1 card. Some really long text to see what happens"
-            Cost = None
             Metadata = { 
                 TradeGain = Some 8u<trade>
                 StrengthGain = Some 8u<strength>
@@ -476,9 +480,9 @@ let fort = Fortification {
 let zeus = God {
     Core = {
         Name = "Zeus"
-        MainAbility = { 
+        MainAbility = Anima { 
             Text = "Draw 1 card. Some really long text to see what happens"
-            Cost = None
+            Cost = 88u<anima>
             Metadata = { 
                 TradeGain = Some 8u<trade>
                 StrengthGain = Some 8u<strength>
@@ -499,7 +503,7 @@ let zeus = God {
 let settlement = Settlement {
     Core = {
         Name = "Vegas"
-        MainAbility = { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = None }
+        MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = Some 88u<anima> } 
         Favor = Some 88u
         Image = settlementImage
@@ -521,12 +525,12 @@ let settlement = Settlement {
 let sampleCards = 
     [settlement; 
      Human hero; 
-     Human { hero with Core = { hero.Core with Faction = nativeAmerican } }; 
-     Human { hero with Core = { hero.Core with Faction = unaligned } }; 
-     Human { hero with Core = { hero.Core with Faction = ancient } }; 
-     Human { hero with Core = { hero.Core with Faction = egyptian } }; 
-     Human { hero with Core = { hero.Core with Faction = sumerian } }; 
-     Human { hero with Core = { hero.Core with Faction = indian } }; 
+     Human { hero with Core = { hero.Core with Name = "Hopi Archer"; Faction = nativeAmerican } }; 
+     Human { hero with Core = { hero.Core with Name = "Basic"; Faction = unaligned } }; 
+     Human { hero with Core = { hero.Core with Name = "Ancient Man"; Faction = ancient } }; 
+     Human { hero with Core = { hero.Core with Name = "Tutankamen"; Faction = egyptian } }; 
+     Human { hero with Core = { hero.Core with Name = "Sumer Queen"; Faction = sumerian } }; 
+     Human { hero with Core = { hero.Core with Name = "Vishatriya"; Faction = indian } }; 
      ogre; 
      zeus; 
      fort;
