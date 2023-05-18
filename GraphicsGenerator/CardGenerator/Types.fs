@@ -321,7 +321,7 @@ let ancient = {
     // dark gray
     Primary = MagickColor(0x0Auy, 0x0Auy, 0x1Fuy)
     Icon = Some {
-        Path = @"indian-logo-3.webp"
+        Path = @"indian-logo-3.webp"// TODO: swap out
         ScaleCorrection = 1.0
         Opacity = 1.
     }
@@ -332,7 +332,7 @@ let indian = {
     Primary = MagickColors.RebeccaPurple
     Icon = Some {
         Path = @"indian-logo-3.webp"
-        ScaleCorrection = 1.0
+        ScaleCorrection = 1.3
         Opacity = 1.
     }
     Name = "Velurian"//Velur
@@ -352,7 +352,7 @@ let egyptian = {
     Primary = MagickColors.CadetBlue
     Icon = Some {
         Path = @"eye-of-horus.webp"
-        ScaleCorrection = 1.0
+        ScaleCorrection = 1.25
         Opacity = 1.
     }
     Name = "Setumi"//Setum: Set + Atum
@@ -362,7 +362,7 @@ let sumerian = {
     Primary = MagickColors.DarkOrange
     Icon = Some {
         Path = @"sumerian-logo.webp"
-        ScaleCorrection = 0.85
+        ScaleCorrection = 1.2
         Opacity = 1.
     }
     Name = "Hitturian"//Hitturia
@@ -372,7 +372,7 @@ let druidic = {
     Primary = MagickColors.ForestGreen
     Icon = Some {
         Path = @"druid-icon.webp"
-        ScaleCorrection = 1.0
+        ScaleCorrection = 1.9
         Opacity = 1.
     }
     Name = "Artonian"//Artonia

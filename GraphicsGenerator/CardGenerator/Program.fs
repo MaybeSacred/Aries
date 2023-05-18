@@ -59,7 +59,7 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
         >> match icon with 
            | Some i -> 
                 outlinedCircle (startX + ``5/32`` + abilityIconPadding) (top + abilityTop + height / 2.) ``5/32``
-                >> overlayImage (startX + abilityIconPadding) (top + abilityTop + (height / 2. - ``5/32``)) ``5/16`` ``5/16`` i
+                >> overlayImageAsCircle (startX + abilityIconPadding) (top + abilityTop + (height / 2. - ``5/32``)) ``5/16`` i
            | None -> id
         >> captionText medSize (startX + 2. * ``5/32`` + textPadding) (top + abilityTop + padding) (width - 2. * (textPadding + ``5/32``)) (height - 2. * padding) text
     let iconForAbility =
@@ -133,9 +133,9 @@ let drawLogo card =
         drawCardLogo s.Core.Image
         >> drawFortificationAbilities s
     | God { Core = c } ->
-        let w = (godVerticalMidpoint - (inset + 2. * padding + ``1/2``))
+        let w = (godVerticalMidpoint - (inset + 2. * padding))
         overlayImage 
-            (godVerticalMidpoint / 2. - w / 2.)
+            (godVerticalMidpoint / 2. - w / 2. + inset)
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
     | Settlement { Core = c } -> 
@@ -144,6 +144,13 @@ let drawLogo card =
             (settlementVerticalMidpoint / 2. - w / 2.)
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
+
+let drawFavor boundaries favor =
+    match favor with
+    | Some i -> 
+        outlinedCircle (favorRadius + inset + 2. * padding) (boundaries.Height - favorRadius - inset - 2. * padding) favorRadius
+        >> (string i |> text largeSize TextAlignment.Center Center (favorRadius + inset + 2. * padding + 1.<dot>) (boundaries.Height - favorRadius - inset - 3. * padding - 1.<dot>))
+    | None -> id
 
 let drawCardCore boundaries (card: Card) (i: ImageState) =
     let data, upgraded = 
@@ -166,18 +173,14 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     |> match data.Faction.Icon with
        | Some p ->
            outlinedCircle iconCostOffset iconCostOffset iconCostRadius
-           >> overlayImage (inset + padding + quanta) (inset + padding + quanta) iconCostDiameter iconCostDiameter p
+           >> overlayImageAsCircle (inset + padding + quanta) (inset + padding + quanta) iconCostDiameter p
        | None -> id
     // logo
     |> drawLogo card
     // cost
     |> drawCostAt boundaries data.Cost
     // favor
-    |> match data.Favor with
-       | Some i -> 
-            outlinedCircle (favorRadius + inset + 2. * padding) (boundaries.Height - favorRadius - inset - 2. * padding) favorRadius
-            >> (string i |> text largeSize TextAlignment.Center Center (favorRadius + inset + 2. * padding + 1.<dot>) (boundaries.Height - favorRadius - inset - 3. * padding - 1.<dot>))
-       | None -> id
+    |> drawFavor boundaries data.Favor 
     // ability area
     |> drawAbilities inset cardMidpoint (boundaries.Width - inset * 2.) cardAbilityBottomPoint card
     // name
@@ -202,11 +205,7 @@ let drawGod boundaries (card: God) (i: ImageState) =
     // cost
     |> drawCostAt boundaries card.Core.Cost
     // favor
-    //|> match card.Core.Favor with
-    //   | Some i -> 
-    //        outlinedCircle (``1/8``+ inset + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
-    //        >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
-    //   | None -> id
+    |> drawFavor boundaries card.Core.Favor 
     // health bar, favor schedule, regular favor placement, cost icons, flavor text
     // ability area
     |> drawAbilities godVerticalMidpoint (inset + ``3/8`` + fontToDot smallSize + 2. * padding) (godVerticalMidpoint - inset) godAbilityBottomPoint (God card)
@@ -216,8 +215,6 @@ let drawGod boundaries (card: God) (i: ImageState) =
     |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (cardKind <| God card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
-    //|> (List.init (Option.defaultValue 0u card.Core.Count |> int) id
-    //    |> List.fold (fun s i -> s >> filledCircle darkGray medGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
 
 
 let drawSettlement boundaries (card: Settlement) (i: ImageState) =
@@ -232,11 +229,7 @@ let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     // cost
     |> drawCostAt boundaries card.Core.Cost
     // favor
-    //|> match card.Core.Favor with
-    //   | Some i -> 
-    //        outlinedCircle (``1/8``+ inset + padding) (boundaries.PixelHeight - ``1/8`` - inset - padding) ``1/8``
-    //        >> (string i |> text extraLargeSize TextAlignment.Center Center (``1/8`` + inset + padding + one) (boundaries.PixelHeight - ``1/8`` - inset - padding - padding))
-    //   | None -> id
+    |> drawFavor boundaries card.Core.Favor
     // TODO: allow for three settlement abilities, with icons
     // health bar, favor schedule, regular favor placement, cost icons, flavor text
     // ability area
@@ -247,8 +240,6 @@ let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (cardKind <| Settlement card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
-    //|> (List.init (Option.defaultValue 0u card.Core.Count |> int) id
-    //    |> List.fold (fun s i -> s >> filledCircle darkGray medGray (boundaries.PixelWidth - inset - 0.35<inch> * dpi - (float i) * (smallSize + padding)) (boundaries.PixelHeight - inset - padding - smallSize/2.) (circleSize / 2.)) id)
 
 let cardCache = ConcurrentDictionary<Card, MagickImage>()
 

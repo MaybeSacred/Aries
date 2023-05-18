@@ -228,6 +228,27 @@ let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (
         CompositeOperator.Over)
     i
 
+let overlayImageAsCircle (startX: float<dot>) (startY: float<dot>) (diameter: float<dot>) (icon: ImageData) (i: ImageState) =
+    let scaledHalfWidth, scaledHalfHeight = int <| icon.ScaleCorrection * diameter / 2., int <| icon.ScaleCorrection * diameter / 2.
+    let size = MagickGeometry(scaledHalfWidth * 2, scaledHalfHeight * 2)
+    use circle = new MagickImage(MagickColors.Transparent, size.Width, size.Height)
+    let drawable = Drawables()
+    { Image = circle; Drawables = drawable }
+    |> filledCircle MagickColors.White MagickColors.Transparent (float scaledHalfWidth * 1.<dot>) (float scaledHalfHeight * 1.<dot>) (diameter / 2.)
+    drawable.Draw circle
+    let settings = MagickReadSettings()
+    use ii = new MagickImage(Path.Combine(basePath, ImagesFolder, icon.Path), settings)
+    ii.HasAlpha <- true
+    ii.BackgroundColor <- MagickColors.Transparent
+    ii.Resize(size)
+    ii.Composite(circle, CompositeOperator.DstIn)
+    ii.Evaluate(Channels.Alpha, EvaluateOperator.Multiply, icon.Opacity)
+    i.Image.Composite(ii, 
+        int startX + (if icon.ScaleCorrection <> 1. then (int (diameter / 2.) - scaledHalfWidth + 1) else 0), 
+        int startY + (if icon.ScaleCorrection <> 1. then (int (diameter / 2.) - scaledHalfHeight + 1) else 0), 
+        CompositeOperator.Over)
+    i
+
 let captionText (size: float<fontPoint>) (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (height: float<dot>) (text: string) (i: ImageState) =
     let settings = MagickReadSettings()
     settings.Font <- font
