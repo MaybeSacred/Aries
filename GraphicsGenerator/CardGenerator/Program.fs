@@ -67,7 +67,7 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
         | Plain _ -> None
         | Ally a -> a.Faction.Icon
         | Trash _ -> Some trashImage
-        | Anima _ -> Some trashImage
+        | Anima _ -> Some animaImage
     let cardAbilityHalfPoint = (bottom - top) / 2.
     let cardAbilityThirdPoint = (bottom - top) / 3.
     let cardAbilityTwoThirdPoint = (bottom - top) * 2. / 3.
@@ -86,17 +86,17 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
     i 
     |> match secondary, flavor with
        | Some at, Some flavor -> 
-           drawTextAtHeight 0.<dot> cardAbilityThirdPoint main.Text
+           drawAbility 0.<dot> cardAbilityThirdPoint (iconForAbility main) main.Text
            >> drawAbility cardAbilityThirdPoint cardAbilityThirdPoint (iconForAbility at) at.Text
            >> drawTextAtHeight cardAbilityTwoThirdPoint cardAbilityThirdPoint flavor
        | Some at, None -> 
-           drawTextAtHeight 0.<dot> cardAbilityHalfPoint main.Text
+           drawAbility 0.<dot> cardAbilityHalfPoint (iconForAbility main) main.Text
            >> drawAbility cardAbilityHalfPoint cardAbilityHalfPoint (iconForAbility at) at.Text
        | None, Some flavor -> 
-           drawTextAtHeight 0.<dot> cardAbilityHalfPoint main.Text
+           drawAbility 0.<dot> cardAbilityHalfPoint (iconForAbility main) main.Text
            >> drawTextAtHeight cardAbilityHalfPoint cardAbilityHalfPoint flavor
        | None, None -> 
-           drawTextAtHeight 0.<dot> (bottom - top) main.Text
+           drawAbility 0.<dot> (bottom - top) (iconForAbility main) main.Text
     |> line darkGray lineworkWidth startX bottom (startX + width) bottom
 
 // cost is going wrong direction
@@ -167,10 +167,10 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
         | Settlement _ | God _ -> invalidOp "This function does not support drawing settlements"
 
     i 
-    |> rectangle data.Faction.Primary inset (inset / 2.) (inset / 2.) (boundaries.Width - (inset / 2.)) (boundaries.Height - (inset / 2.))
+    |> rectangle (iconography card).Primary inset (inset / 2.) (inset / 2.) (boundaries.Width - (inset / 2.)) (boundaries.Height - (inset / 2.))
     |> rectangle darkGray lineworkWidth inset inset (boundaries.Width - inset) (boundaries.Height - inset)
     // icon
-    |> match data.Faction.Icon with
+    |> match (iconography card).Icon with
        | Some p ->
            outlinedCircle iconCostOffset iconCostOffset iconCostRadius
            >> overlayImageAsCircle (inset + padding + quanta) (inset + padding + quanta) iconCostDiameter p
@@ -186,7 +186,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // name
     |> captionText largeSize (iconCostDiameter + inset + padding) inset (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) ``3/8`` data.Name
     // faction-kind banner
-    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) (fontToDot smallSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{data.Faction.Name} {cardKind card}"""
+    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) (fontToDot smallSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{(match faction card with Some f -> f.Name + " " | None -> "")}{cardKind card}"""
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - textPadding) version
     // count
@@ -197,9 +197,14 @@ let drawGod boundaries (card: God) (i: ImageState) =
     let nameBottom = fontToDot largeSize + inset + 2. * textPadding
     //let leftRectangle = { boundaries with Width }
     i 
-    |> rectangle card.Core.Faction.Primary inset (inset / 2.) (inset / 2.) (boundaries.Width - (inset / 2.)) (boundaries.Height - (inset / 2.))
+    |> rectangle card.Faction.Primary inset (inset / 2.) (inset / 2.) (boundaries.Width - (inset / 2.)) (boundaries.Height - (inset / 2.))
     |> rectangle darkGray lineworkWidth inset inset (boundaries.Width - inset) (boundaries.Height - inset)
     |> line darkGray lineworkWidth godVerticalMidpoint inset godVerticalMidpoint (boundaries.Height - inset)
+    |> match (iconography <| God card).Icon with
+       | Some p ->
+           outlinedCircle iconCostOffset iconCostOffset iconCostRadius
+           >> overlayImageAsCircle (inset + padding + quanta) (inset + padding + quanta) iconCostDiameter p
+       | None -> id
     // logo
     |> drawLogo (God card)
     // cost
@@ -210,9 +215,9 @@ let drawGod boundaries (card: God) (i: ImageState) =
     // ability area
     |> drawAbilities godVerticalMidpoint (inset + ``3/8`` + fontToDot smallSize + 2. * padding) (godVerticalMidpoint - inset) godAbilityBottomPoint (God card)
     // name
-    |> captionText largeSize (``3/8`` + inset) inset (godVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
+    |> captionText extraLargeSize (``3/8`` + inset) inset (godVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (cardKind <| God card)
+    |> captionText medSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot medSize + 2. * padding) (cardKind <| God card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
 
@@ -221,9 +226,14 @@ let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     let nameBottom = fontToDot largeSize + inset + 2. * textPadding
     //let leftRectangle = { boundaries with Width }
     i 
-    |> rectangle card.Core.Faction.Primary inset (inset / 2.) (inset / 2.) (boundaries.Width - (inset / 2.)) (boundaries.Height - (inset / 2.))
+    |> rectangle card.Faction.Primary inset (inset / 2.) (inset / 2.) (boundaries.Width - (inset / 2.)) (boundaries.Height - (inset / 2.))
     |> rectangle darkGray lineworkWidth inset inset (boundaries.Width - inset) (boundaries.Height - inset)
     |> line darkGray lineworkWidth settlementVerticalMidpoint inset settlementVerticalMidpoint (boundaries.Height - inset)
+    |> match (iconography <| Settlement card).Icon with
+       | Some p ->
+           outlinedCircle iconCostOffset iconCostOffset iconCostRadius
+           >> overlayImageAsCircle (inset + padding + quanta) (inset + padding + quanta) iconCostDiameter p
+       | None -> id
     // logo
     |> drawLogo (Settlement card)
     // cost

@@ -45,7 +45,7 @@ let defaultMetadata = {
     FavorGain = None
 }
 
-type PlainAbility = {
+type PlainOrTrashAbility = {
     Text: string 
     Metadata: AbilityMetadata
 }
@@ -56,11 +56,6 @@ type AllyAbility = {
     Faction: FactionData
 }
 
-type TrashAbility = {
-    Text: string 
-    Metadata: AbilityMetadata
-}
-
 type AnimaAbility = {
     Text: string 
     Metadata: AbilityMetadata
@@ -68,10 +63,10 @@ type AnimaAbility = {
 }
 
 type Ability = 
-    | Plain of PlainAbility 
+    | Plain of PlainOrTrashAbility 
     | Ally of AllyAbility 
     | Anima of AnimaAbility 
-    | Trash of TrashAbility
+    | Trash of PlainOrTrashAbility
 
     member x.Text =
         match x with 
@@ -109,18 +104,19 @@ type CardCore = {
     Count: uint
     ShowCount: bool
     Favor: uint option
-    Faction: FactionData
     FlavorText: string option
 }
 
 type Human = {
     Core: CardCore
+    Faction: FactionData
     SecondaryAbility: Ability option
     Upgraded: bool
 }
 
 type Building = {
     Core: CardCore
+    Faction: FactionData
     RightSlot: Slot option
     Upgraded: bool
 }
@@ -139,10 +135,12 @@ type Relic = {
 
 type God = {
     Core: CardCore
+    Faction: FactionData
 }
 // aegis? battlement? fortification?
 type Fortification = {
     Core: CardCore
+    Faction: FactionData
     Health: uint<hp>
     LeftSlot: Slot option
     Upgraded: bool
@@ -152,6 +150,7 @@ type Fortification = {
 
 type Settlement = {
     Core: CardCore
+    Faction: FactionData
     Health: uint<hp>
     SecondaryAbility: Ability option
     TertiaryAbility: Ability option
@@ -159,6 +158,7 @@ type Settlement = {
     RightSlot: Slot option
     // top slot can only have a God
     TopSlot: Slot option
+    /// allowed slot types
     GarrisonSlot: Slot list
     //FavorSchedule: FavorSchedule
 }
@@ -183,6 +183,18 @@ let cardKind =
     | Nomad _ -> "Nomad"
     | Creature _ -> "Creature"
     | Relic _ -> "Relic"
+
+let faction =
+    function  
+    | Fortification { Faction = f } 
+    | Human { Faction = f } 
+    | Building { Faction = f } 
+    | Settlement { Faction = f } 
+    | God { Faction = f }
+        -> Some f
+    | Nomad _ 
+    | Creature _ 
+    | Relic _ -> None
 
 let core =
     function
@@ -222,6 +234,12 @@ let fortificationImage = {
     Path = @"fort.webp"
     ScaleCorrection = 0.98
     Opacity = 0.8
+}
+
+let animaImage = {
+    Path = @"star-icon.webp"
+    ScaleCorrection = 1.5
+    Opacity = 1.
 }
 
 let trashImage = {
@@ -321,8 +339,8 @@ let ancient = {
     // dark gray
     Primary = MagickColor(0x0Auy, 0x0Auy, 0x1Fuy)
     Icon = Some {
-        Path = @"indian-logo-3.webp"// TODO: swap out
-        ScaleCorrection = 1.0
+        Path = @"hand.webp"
+        ScaleCorrection = 1.1
         Opacity = 1.
     }
     Name = "Ancient"
@@ -339,7 +357,7 @@ let indian = {
 }
 // todo: color purple
 let nativeAmerican = {
-    Primary = MagickColors.LightSeaGreen
+    Primary = MagickColors.ForestGreen
     Icon = Some {
         Path = @"feather-logo-3.webp"
         ScaleCorrection = 1.0
@@ -359,7 +377,7 @@ let egyptian = {
 }
 
 let sumerian = {
-    Primary = MagickColors.DarkOrange
+    Primary = MagickColors.OrangeRed
     Icon = Some {
         Path = @"sumerian-logo.webp"
         ScaleCorrection = 1.2
@@ -369,7 +387,7 @@ let sumerian = {
 }
 
 let druidic = {
-    Primary = MagickColors.ForestGreen
+    Primary = MagickColors.SaddleBrown
     Icon = Some {
         Path = @"druid-icon.webp"
         ScaleCorrection = 1.9
@@ -377,6 +395,17 @@ let druidic = {
     }
     Name = "Artonian"//Artonia
 }
+
+let iconography =
+    function  
+    | Fortification { Faction = f } 
+    | Human { Faction = f } 
+    | Building { Faction = f } 
+    | Settlement { Faction = f } 
+    | God { Faction = f } -> f
+    | Nomad _ -> nomad
+    | Creature _  -> creature
+    | Relic _ -> relic
 
 let hero = {
     Core = {
@@ -387,9 +416,9 @@ let hero = {
         Image = femaleHumanImage
         Count = 3u
         ShowCount = true
-        Faction = druidic
         FlavorText = Some "Flavor text"
     }
+    Faction = druidic
     SecondaryAbility = Some <| Ally { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; Faction = druidic }
     Upgraded = true
 }
@@ -397,13 +426,12 @@ let hero = {
 let bookOfTheDead = Relic {
     Core = {
         Name = "Book of the Dead"
-        MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
+        MainAbility = Trash { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = None; Strength = None; Anima = Some 88u<anima> } 
         Favor = Some 88u
         Image = relicImage
         Count = 3u
         ShowCount = true
-        Faction = relic
         FlavorText = Some "Flavor text"
     }
 }
@@ -417,9 +445,9 @@ let building = Building {
         Image = buildingImage
         Count = 3u
         ShowCount = true
-        Faction = sumerian
         FlavorText = Some "Flavor text"
     }
+    Faction = sumerian
     Upgraded = false
     RightSlot = Some GodSlot
 }
@@ -433,7 +461,6 @@ let ogre = Creature {
         Image = creature1Image
         Count = 1u
         ShowCount = false
-        Faction = creature
         FlavorText = Some "Flavor text"
     }
 }
@@ -447,7 +474,6 @@ let camelArcher = Nomad {
         Image = nomadImage
         Count = 1u
         ShowCount = false
-        Faction = nomad
         FlavorText = Some "Flavor text"
     }
 }
@@ -464,14 +490,14 @@ let fort = Fortification {
                 AnimaCost = Some 8u<anima>
                 FavorGain = Some 8u<favor>
         } }
-        Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = None } 
+        Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None } 
         Favor = Some 88u
         Image = fortificationImage
         Count = 3u
         ShowCount = true
-        Faction = indian
         FlavorText = Some "Flavor text"
     }
+    Faction = indian
     Health = 9u<hp>
     Upgraded = true
     LeftSlot = Some FortificationSlot
@@ -495,9 +521,9 @@ let zeus = God {
         Image = godImage
         Count = 3u
         ShowCount = true
-        Faction = ancient
         FlavorText = Some "Flavor text"
     }
+    Faction = ancient
 }
 
 let settlement = Settlement {
@@ -509,9 +535,9 @@ let settlement = Settlement {
         Image = settlementImage
         Count = 1u
         ShowCount = true
-        Faction = unaligned
         FlavorText = Some "Flavor text"
     }
+    Faction = unaligned
     Health = 8u<hp>
     SecondaryAbility = Some <| Anima { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = 88u<anima> }
     TertiaryAbility = Some <| Anima { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = 2u<anima> }
@@ -519,18 +545,34 @@ let settlement = Settlement {
     TopSlot = Some GodSlot
     RightSlot = Some BuildingSlot
     GarrisonSlot = [FortificationSlot; Garrison; BuildingSlot]
-    //FavorSchedule = { First = 3u<favor>; Second = 2u<favor>; Third = 1u<favor> }
 }
 
 let sampleCards = 
     [settlement; 
      Human hero; 
-     Human { hero with Core = { hero.Core with Name = "Hopi Archer"; Faction = nativeAmerican } }; 
-     Human { hero with Core = { hero.Core with Name = "Basic"; Faction = unaligned } }; 
-     Human { hero with Core = { hero.Core with Name = "Ancient Man"; Faction = ancient } }; 
-     Human { hero with Core = { hero.Core with Name = "Tutankamen"; Faction = egyptian } }; 
-     Human { hero with Core = { hero.Core with Name = "Sumer Queen"; Faction = sumerian } }; 
-     Human { hero with Core = { hero.Core with Name = "Vishatriya"; Faction = indian } }; 
+     Human { hero with Core = { hero.Core with Name = "Hopi Archer" }; Faction = nativeAmerican }; 
+     Human { hero with Core = { hero.Core with Name = "Basic" }; Faction = unaligned }; 
+     Human { hero with Core = { hero.Core with Name = "Ancient Man" }; Faction = ancient }; 
+     Human { hero with 
+                Core = { hero.Core with Name = "Ancient Woman" }; Faction = ancient; 
+                SecondaryAbility = Some <| Anima { 
+                    Text = "Draw 1 card. Some really long text to see what happens"
+                    Cost = 88u<anima>
+                    Metadata = defaultMetadata } }; 
+     Human { hero with 
+                Core = { hero.Core with Name = "Ancient Person" }; Faction = ancient; 
+                SecondaryAbility = Some <| Trash { 
+                    Text = "Scrap this card"; 
+                    Metadata = defaultMetadata } }; 
+     Human { hero with 
+                Core = { hero.Core with Name = "Big Daddy" }; Faction = ancient; 
+                SecondaryAbility = Some <| Ally { 
+                    Text = "Scrap this card"
+                    Faction = indian
+                    Metadata = defaultMetadata; } }; 
+     Human { hero with Core = { hero.Core with Name = "Tutankamen" }; Faction = egyptian }; 
+     Human { hero with Core = { hero.Core with Name = "Sumer Queen" }; Faction = sumerian }; 
+     Human { hero with Core = { hero.Core with Name = "Vishatriya" }; Faction = indian }; 
      ogre; 
      zeus; 
      fort;

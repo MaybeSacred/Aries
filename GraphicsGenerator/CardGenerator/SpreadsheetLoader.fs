@@ -200,7 +200,7 @@ let rowToAbility (row: RowKind) =
     match row, metadata with
     | UpgradeMain s, { AnimaCost = None }
     | MainRow s, { AnimaCost = None } -> 
-        Plain { PlainAbility.Text = s.Text; Metadata = metadata }
+        Plain { PlainOrTrashAbility.Text = s.Text; Metadata = metadata }
     | UpgradeAlly s, { AnimaCost = None } 
     | AllyRow s, { AnimaCost = None } -> 
         Ally { Text = s.Text; Metadata = metadata; Faction = s.Faction }
@@ -224,7 +224,6 @@ let tryCreateCard main ally =
             Image = femaleHumanImage
             Count = cardCount
             ShowCount = main.ShowCardCount
-            Faction = main.Faction
             FlavorText = main.FlavorText
         }
         let upgraded = main.UpgradeCost |> Option.isSome
@@ -232,12 +231,14 @@ let tryCreateCard main ally =
         | "Human" -> 
             return Human {
                 Core = core
+                Faction = main.Faction
                 SecondaryAbility = ally
                 Upgraded = upgraded
             }
         | "Building" ->
             return Building {
                 Core = core
+                Faction = main.Faction
                 RightSlot = None
                 Upgraded = upgraded
             }
@@ -245,6 +246,7 @@ let tryCreateCard main ally =
             let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome "Health must be provided for fortification cards"
             return Fortification {
                 Core = core
+                Faction = main.Faction
                 Health = health
                 LeftSlot = None
                 Upgraded = upgraded
@@ -265,6 +267,7 @@ let tryCreateCard main ally =
             let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome "Health must be provided for settlement cards"
             return Settlement {
                 Core = core
+                Faction = main.Faction
                 Health = health
                 SecondaryAbility = None
                 TertiaryAbility = None
@@ -276,6 +279,7 @@ let tryCreateCard main ally =
         | "God" ->
             return God {
                 Core = core
+                Faction = main.Faction
             }
         | _ -> return! Error $"Unsupported row {main.Name}: %A{main} %A{ally}"
     }
