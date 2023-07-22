@@ -51,11 +51,16 @@ let FlavorTextCol = "AF"
 let CardCountCol = "AH"
 [<Literal>]
 let ShowCardCountCol = "AI"
+[<Literal>]
+let GenerateCardCol = "AJ"
+[<Literal>]
+let DebugRowNumberCol = "AK"
 // if adding a col, update the code at the bottom
 
 type ParsedRow = string option list
 
 type PartialCard = {
+    DebugNumber: uint
     Name: string
     Faction: FactionData
     Kind: string
@@ -101,10 +106,10 @@ let rowToList2 (row: SpreadsheetXml.TableRow2) =
 let codeToFaction s =
     match s with
     | "U" | "P" | "R" | "SM" | "M" -> Some Types.unaligned
-    | "BB" -> Some Types.sumerian
-    | "I" -> Some Types.nativeAmerican
-    | "S" -> Some Types.egyptian
-    | "RA" -> Some Types.druidic
+    | "SU" -> Some Types.sumerian
+    | "NA" -> Some Types.nativeAmerican
+    | "EG" -> Some Types.egyptian
+    | "DR" -> Some Types.druidic
     | _ -> None
 
 let createPartial kind upgrade ally trash row =
@@ -132,15 +137,16 @@ let itemAt col (r: ParsedRow) =
     |> Option.map String.trimWhiteSpaces
 
 let tryReadRow (r: ParsedRow) =
-    let hasValue = tryParse<uint> >> Option.filter (fun s -> s > 0u)
+    let parseNumeric = tryParse<uint> >> Option.filter (fun s -> s > 0u)
     result {
+        let! debug = itemAt DebugRowNumberCol r >>= parseNumeric |> Result.requireSome $"Debug number must be present %A{toDebugRow r}" 
         let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{toDebugRow r}"
         let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{toDebugRow r}"
         let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{toDebugRow r}"
         let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row %A{toDebugRow r}"
         let hasCardCount = 
             itemAt ShowCardCountCol r 
-            >>= hasValue
+            >>= parseNumeric
             |> Option.map (fun _ -> true) 
             |> Option.defaultValue false
         let cardCount = itemAt CardCountCol r >>= tryParse<uint> 
@@ -153,11 +159,12 @@ let tryReadRow (r: ParsedRow) =
         let animaGain = itemAt AnimaGainCol r 
         let favorGain = itemAt FavorGainCol r 
         let fortificationHealth = itemAt FortificationHealthCol r 
-        let upgradeCost = itemAt UpgradeCostCol r >>= hasValue
+        let upgradeCost = itemAt UpgradeCostCol r >>= parseNumeric
         let flavorText = itemAt FlavorTextCol r 
-        let ally = itemAt AllyCol r >>= hasValue
-        let trash = itemAt TrashCol r >>= hasValue
+        let ally = itemAt AllyCol r >>= parseNumeric
+        let trash = itemAt TrashCol r >>= parseNumeric
         let row = {
+            DebugNumber = debug
             Name = nameOrRowKind
             Faction = faction
             Kind = kind
@@ -306,7 +313,7 @@ let partialRowsToCard (rows: ParsedRow list) =
     }
 
 let readOdt path =
-    use zipToOpen = new FileStream(path, FileMode.Open, FileAccess.Read)
+    use zipToOpen = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
     use archive = new ZipArchive(zipToOpen, ZipArchiveMode.Read)
     let readmeEntry = archive.GetEntry "content.xml"
     use reader = new StreamReader(readmeEntry.Open())
@@ -322,7 +329,7 @@ let load (path: string) =
             (opened.Body.Spreadsheet.Tables[1].TableRowGroups
             |> List.ofArray
             |> List.map (fun s -> s.TableRows |> List.ofArray |> List.map rowToList2))
-        |> List.map (List.map (List.take (colToInt ShowCardCountCol + 1)) >> partialRowsToCard)
+        |> List.map (List.map (List.take 52) >> partialRowsToCard)
         |> Result.partition
     let cards, maybeCards = cards |> List.unzip
     maybeCards |> List.choose id |> List.append cards, errors |> List.collect id

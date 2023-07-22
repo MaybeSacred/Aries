@@ -54,14 +54,15 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
     let drawTextAtHeight abilityTop height text =
         line darkGray lineworkWidth startX (top + abilityTop) (startX + width) (top + abilityTop)
         >> captionText medSize (startX + textPadding) (top + abilityTop + padding) (width - 2. * (textPadding)) (height - 2. * padding) text
-    let drawAbility abilityTop (height: float<dot>) icon text =
+    let drawAbility abilityTop height icon text =
         line darkGray lineworkWidth startX (top + abilityTop) (startX + width) (top + abilityTop)
         >> match icon with 
            | Some i -> 
                 outlinedCircle (startX + ``5/32`` + abilityIconPadding) (top + abilityTop + height / 2.) ``5/32``
                 >> overlayImageAsCircle (startX + abilityIconPadding) (top + abilityTop + (height / 2. - ``5/32``)) ``5/16`` i
-           | None -> id
-        >> captionText medSize (startX + 2. * ``5/32`` + textPadding) (top + abilityTop + padding) (width - 2. * (textPadding + ``5/32``)) (height - 2. * padding) text
+                >> captionText medSize (startX + 2. * ``5/32`` + textPadding) (top + abilityTop + padding) (width - 2. * (textPadding + ``5/32``)) (height - 2. * padding) text
+           | None -> 
+                captionText medSize (startX + textPadding) (top + abilityTop + padding) (width - 2. * textPadding) (height - 2. * padding) text
     let iconForAbility =
         function 
         | Plain _ -> None
@@ -300,10 +301,10 @@ if Directory.Exists outputPath then
 Directory.CreateDirectory outputPath |> ignore
 
 try
-    //let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
-    //File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
-    //cards 
-    sampleCards
+    let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
+    File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
+    cards 
+    //sampleCards
     |> List.groupBy (
         function 
         | Settlement _ -> 0
