@@ -13,6 +13,8 @@ open Types
 
 type SpreadsheetXml = XmlProvider<"""../../content.xml""">
 
+// include keywords for soldier, guard, trader, animist, etc. Items
+
 [<Literal>]
 let NameCol = "A"
 [<Literal>]
@@ -20,41 +22,47 @@ let FactionCol = "B"
 [<Literal>]
 let KindCol = "C"
 [<Literal>]
-let TextCol = "D"
+let SubKindCol = "D"
 [<Literal>]
-let TradeCostCol = "E"
+let TextCol = "E"
 [<Literal>]
-let StrengthCostCol = "F"
+let TradeCostCol = "F"
 [<Literal>]
-let FavorCol = "G"
+let StrengthCostCol = "G"
 [<Literal>]
-let AnimaCol = "H"
+let AnimaCostCol = "H"
 [<Literal>]
-let TradeGainCol = "I"
+let FavorCol = "I"
 [<Literal>]
-let StrengthGainCol = "J"
+let AnimaLossCol = "J"
 [<Literal>]
-let AnimaGainCol = "K"
+let TradeGainCol = "K"
 [<Literal>]
-let FavorGainCol = "L"
+let StrengthGainCol = "L"
 [<Literal>]
-let FortificationHealthCol = "N"
+let PermanentAnimaGainCol = "M"
 [<Literal>]
-let UpgradeCostCol = "U"
+let AnimaGainCol = "N"
 [<Literal>]
-let TrashCol = "Y"
+let FavorGainCol = "O"
 [<Literal>]
-let AllyCol = "Z"
+let FortificationHealthCol = "Q"
 [<Literal>]
-let FlavorTextCol = "AF"
+let UpgradeCostCol = "W"
 [<Literal>]
-let CardCountCol = "AH"
+let TrashCol = "AA"
 [<Literal>]
-let ShowCardCountCol = "AI"
+let AllyCol = "AB"
 [<Literal>]
-let GenerateCardCol = "AJ"
+let FlavorTextCol = "AH"
 [<Literal>]
-let DebugRowNumberCol = "AK"
+let CardCountCol = "AJ"
+[<Literal>]
+let ShowCardCountCol = "AK"
+[<Literal>]
+let GenerateCardCol = "AL"
+[<Literal>]
+let DebugRowNumberCol = "AM"
 // if adding a col, update the code at the bottom
 
 type ParsedRow = string option list
@@ -64,13 +72,14 @@ type PartialCard = {
     Name: string
     Faction: FactionData
     Kind: string
+    SubKind: string option
     Text: string
     CardCount: uint option
     ShowCardCount: bool
     TradeCost: string option
     StrengthCost: string option
-    Favor: string option
     AnimaCost: string option
+    Favor: string option
     TradeGain: string option
     StrengthGain: string option
     AnimaGain: string option
@@ -143,6 +152,7 @@ let tryReadRow (r: ParsedRow) =
         let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{toDebugRow r}"
         let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{toDebugRow r}"
         let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{toDebugRow r}"
+        let subKind = itemAt SubKindCol r
         let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row %A{toDebugRow r}"
         let hasCardCount = 
             itemAt ShowCardCountCol r 
@@ -153,7 +163,7 @@ let tryReadRow (r: ParsedRow) =
         let tradeCost = itemAt TradeCostCol r 
         let strengthCost = itemAt StrengthCostCol r 
         let favor = itemAt FavorCol r 
-        let animaCost = itemAt AnimaCol r 
+        let animaCost = itemAt AnimaCostCol r 
         let tradeGain = itemAt TradeGainCol r 
         let strengthGain = itemAt StrengthGainCol r 
         let animaGain = itemAt AnimaGainCol r 
@@ -168,13 +178,14 @@ let tryReadRow (r: ParsedRow) =
             Name = nameOrRowKind
             Faction = faction
             Kind = kind
+            SubKind = subKind
             Text = text
             CardCount = cardCount
             ShowCardCount = hasCardCount
             TradeCost = tradeCost
             StrengthCost = strengthCost
-            Favor = favor
             AnimaCost = animaCost
+            Favor = favor
             TradeGain = tradeGain
             StrengthGain = strengthGain
             AnimaGain = animaGain
@@ -232,6 +243,7 @@ let tryCreateCard main ally =
             Count = cardCount
             ShowCount = main.ShowCardCount
             FlavorText = main.FlavorText
+            SubKind = main.SubKind
         }
         let upgraded = main.UpgradeCost |> Option.isSome
         match main.Kind with
@@ -250,7 +262,7 @@ let tryCreateCard main ally =
                 Upgraded = upgraded
             }
         | "Fortification" ->
-            let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome "Health must be provided for fortification cards"
+            let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome $"Health must be provided for fortification cards {main}"
             return Fortification {
                 Core = core
                 Faction = main.Faction
@@ -271,7 +283,7 @@ let tryCreateCard main ally =
                 Core = core
             }
         | "Settlement" ->
-            let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome "Health must be provided for settlement cards"
+            let! health = tryParseToMeasure main.FortificationHealth |> Result.requireSome $"Health must be provided for settlement cards {main}"
             return Settlement {
                 Core = core
                 Faction = main.Faction

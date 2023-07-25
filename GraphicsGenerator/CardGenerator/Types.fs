@@ -105,6 +105,7 @@ type CardCore = {
     ShowCount: bool
     Favor: uint option
     FlavorText: string option
+    SubKind: string option
 }
 
 type Human = {
@@ -173,16 +174,6 @@ type Card =
     | Creature of Creature
     | Relic of Relic
 
-let cardKind =
-    function  
-    | Fortification _ -> "Fortification"
-    | Human _ -> "Human"
-    | Building _ -> "Building"
-    | Settlement _ -> "Settlement"
-    | God _ -> "God"
-    | Nomad _ -> "Nomad"
-    | Creature _ -> "Creature"
-    | Relic _ -> "Relic"
 
 let faction =
     function  
@@ -208,7 +199,20 @@ let core =
     | Relic { Core = c }
         -> c
 
-let name c = core c |> fun s -> s.Name
+let cardKind c =
+    let subKind = (core c).SubKind |> Option.map (fun s -> " • " + s) |> Option.defaultValue ""
+    match c with
+    | Fortification f -> "Fortification"
+    | Human h -> "Human"
+    | Building b -> "Building"
+    | Settlement s -> "Settlement"
+    | God g -> "God"
+    | Nomad n -> "Nomad"
+    | Creature c -> "Creature"
+    | Relic r -> "Relic"
+    |> fun s -> s + subKind
+
+let name c = (core c).Name
 
 // data
 
@@ -417,6 +421,7 @@ let hero = {
         Count = 3u
         ShowCount = true
         FlavorText = Some "Flavor text"
+        SubKind = Some "Soldier"
     }
     Faction = druidic
     SecondaryAbility = Some <| Ally { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; Faction = druidic }
@@ -433,6 +438,7 @@ let bookOfTheDead = Relic {
         Count = 3u
         ShowCount = true
         FlavorText = Some "Flavor text"
+        SubKind = None
     }
 }
 
@@ -446,6 +452,7 @@ let building = Building {
         Count = 3u
         ShowCount = true
         FlavorText = Some "Flavor text"
+        SubKind = None
     }
     Faction = sumerian
     Upgraded = false
@@ -462,6 +469,7 @@ let ogre = Creature {
         Count = 1u
         ShowCount = false
         FlavorText = Some "Flavor text"
+        SubKind = None
     }
 }
 
@@ -475,6 +483,7 @@ let camelArcher = Nomad {
         Count = 1u
         ShowCount = false
         FlavorText = Some "Flavor text"
+        SubKind = None
     }
 }
 
@@ -496,6 +505,7 @@ let fort = Fortification {
         Count = 3u
         ShowCount = true
         FlavorText = Some "Flavor text"
+        SubKind = None
     }
     Faction = indian
     Health = 9u<hp>
@@ -522,6 +532,7 @@ let zeus = God {
         Count = 3u
         ShowCount = true
         FlavorText = Some "Flavor text"
+        SubKind = Some "Thunder"
     }
     Faction = ancient
 }
@@ -536,6 +547,7 @@ let settlement = Settlement {
         Count = 1u
         ShowCount = true
         FlavorText = Some "Flavor text"
+        SubKind = None
     }
     Faction = unaligned
     Health = 8u<hp>
