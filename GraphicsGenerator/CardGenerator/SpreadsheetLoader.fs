@@ -96,13 +96,16 @@ type RowKind =
     | UpgradeMain of PartialCard
     | UpgradeAlly of PartialCard
 
+let concatString =
+    String.concat Environment.NewLine >> (fun s -> if s = "" then None else Some s)
+
 let rowToList (row: SpreadsheetXml.TableRow) = 
     row.TableCells
     |> List.ofArray
     |> List.collect (fun c -> 
         match c.NumberColumnsRepeated with
-        | Some r -> c.P |> Option.bind (fun p -> p.String) |> konst |> List.init r
-        | None -> c.P |> Option.bind (fun p -> p.String) |> List.singleton)
+        | Some r -> c.Ps |> Array.choose (fun p -> p.String) |> concatString |> konst |> List.init r
+        | None -> c.Ps |> Array.choose (fun p -> p.String) |> concatString |> List.singleton)
 
 let rowToList2 (row: SpreadsheetXml.TableRow2) = 
     row.TableCells
@@ -119,6 +122,8 @@ let codeToFaction s =
     | "NA" -> Some Types.nativeAmerican
     | "EG" -> Some Types.egyptian
     | "DR" -> Some Types.druidic
+    | "IN" -> Some Types.indian
+    | "AN" -> Some Types.ancient
     | _ -> None
 
 let createPartial kind upgrade ally trash row =
@@ -149,11 +154,12 @@ let tryReadRow (r: ParsedRow) =
     let parseNumeric = tryParse<uint> >> Option.filter (fun s -> s > 0u)
     result {
         let! debug = itemAt DebugRowNumberCol r >>= parseNumeric |> Result.requireSome $"Debug number must be present %A{toDebugRow r}" 
+        do! itemAt GenerateCardCol r >>= parseNumeric |> Result.requireSome $"Skipping row {debug} %A{toDebugRow r}" |> Result.ignore
         let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{toDebugRow r}"
         let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{toDebugRow r}"
         let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{toDebugRow r}"
         let subKind = itemAt SubKindCol r
-        let! text = itemAt TextCol r |> Result.requireSome $"No text provided for row %A{toDebugRow r}"
+        let text = itemAt TextCol r |> Option.defaultValue ""
         let hasCardCount = 
             itemAt ShowCardCountCol r 
             >>= parseNumeric

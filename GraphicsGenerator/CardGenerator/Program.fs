@@ -100,7 +100,6 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
            drawAbility 0.<dot> (bottom - top) (iconForAbility main) main.Text
     |> line darkGray lineworkWidth startX bottom (startX + width) bottom
 
-// cost is going wrong direction
 let drawCostAt boundaries (cost: CardCost) =
     let centerX = boundaries.Width - iconCostOffset
     let textCenterX = boundaries.Width - iconCostTextXOffset
@@ -109,7 +108,8 @@ let drawCostAt boundaries (cost: CardCost) =
     let createIcon color val' iconCostTextXOffset =
         circle color 0 360 iconCostTextXOffset
         >> text extraExtraLargeSize TextAlignment.Center Center iconCostTextXOffset iconCostTextYOffset (string val')
-    [cost.Trade |>> createIcon tradeGold; cost.Strength |>> createIcon strengthRed; cost.Anima |>> createIcon animaGreen]
+    // inverse order
+    [cost.Anima |>> createIcon animaGreen; cost.Strength |>> createIcon strengthRed;  cost.Trade |>> createIcon tradeGold]
     |> List.choose id
     |> List.fold (fun (s, xOffset) t -> s >> t xOffset, xOffset - strengthXCenterOffset) (id, centerX)
     |> fst
@@ -304,21 +304,38 @@ try
     let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
     File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
     cards 
+    |> List.map (
+        function 
+        | Creature c -> 
+            let prependFavor text = String.concat Environment.NewLine [$"Gain {c.Core.Favor.Value} Favor"; text]
+            Creature { c 
+                        with 
+                        Core = { c.Core 
+                                    with 
+                                    Favor = None
+                                    MainAbility = match c.Core.MainAbility with 
+                                                  | Plain p -> Plain { p with Text = prependFavor p.Text }
+                                                  | Ally p -> Ally { p with Text = prependFavor p.Text }
+                                                  | Anima p -> Anima { p with Text = prependFavor p.Text }
+                                                  | Trash p -> Trash { p with Text = prependFavor p.Text }
+                        } }
+        | s -> s
+    )
     //sampleCards
     |> List.groupBy (
         function 
-        | Settlement _ -> 0
-        | God _ -> 1
-        | _ -> 2
+        | Settlement _ -> "s", 4
+        | God _ -> "g", 4
+        | _ -> "o", 9
     )
-    |> List.collect (fun (_,c) -> 
+    |> List.collect (fun ((_, perPage),c) -> 
         c
         |> List.collect (fun c -> 
             konst c 
             |> List.init (if drawAllCards then int (core c).Count else 1)
         )
         |> List.sortBy name
-        |> List.chunkBySize (if compositeCards then 9 else 1)
+        |> List.chunkBySize (if compositeCards then perPage else 1)
     )
     |> PSeq.iter (drawToFile outputPath compositeCards)
 finally
