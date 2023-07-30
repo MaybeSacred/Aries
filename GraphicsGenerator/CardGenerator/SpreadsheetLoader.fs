@@ -56,13 +56,15 @@ let AllyCol = "AB"
 [<Literal>]
 let FlavorTextCol = "AH"
 [<Literal>]
-let CardCountCol = "AJ"
+let ImageCol = "AI"
 [<Literal>]
-let ShowCardCountCol = "AK"
+let CardCountCol = "AK"
 [<Literal>]
-let GenerateCardCol = "AL"
+let ShowCardCountCol = "AL"
 [<Literal>]
-let DebugRowNumberCol = "AM"
+let GenerateCardCol = "AM"
+[<Literal>]
+let DebugRowNumberCol = "AN"
 // if adding a col, update the code at the bottom
 
 type ParsedRow = string option list
@@ -82,11 +84,13 @@ type PartialCard = {
     Favor: string option
     TradeGain: string option
     StrengthGain: string option
+    AnimaLoss: string option
     AnimaGain: string option
     FavorGain: string option
     FortificationHealth: string option
     UpgradeCost: uint option
     FlavorText: string option
+    Image: string option
 }
 
 type RowKind = 
@@ -172,11 +176,13 @@ let tryReadRow (r: ParsedRow) =
         let animaCost = itemAt AnimaCostCol r 
         let tradeGain = itemAt TradeGainCol r 
         let strengthGain = itemAt StrengthGainCol r 
+        let animaLoss = itemAt AnimaLossCol r 
         let animaGain = itemAt AnimaGainCol r 
         let favorGain = itemAt FavorGainCol r 
         let fortificationHealth = itemAt FortificationHealthCol r 
         let upgradeCost = itemAt UpgradeCostCol r >>= parseNumeric
         let flavorText = itemAt FlavorTextCol r 
+        let image = itemAt ImageCol r 
         let ally = itemAt AllyCol r >>= parseNumeric
         let trash = itemAt TrashCol r >>= parseNumeric
         let row = {
@@ -194,11 +200,13 @@ let tryReadRow (r: ParsedRow) =
             Favor = favor
             TradeGain = tradeGain
             StrengthGain = strengthGain
+            AnimaLoss = animaLoss
             AnimaGain = animaGain
             FavorGain = favorGain
             FortificationHealth = fortificationHealth
             UpgradeCost = upgradeCost
             FlavorText = flavorText
+            Image = image
         }
         return createPartial nameOrRowKind upgradeCost ally trash row
     }
@@ -218,7 +226,7 @@ let rowToAbility (row: RowKind) =
         | UpgradeAlly s -> 
             { TradeGain = tryParseToMeasure s.TradeGain
               StrengthGain = tryParseToMeasure s.StrengthGain
-              AnimaCost = tryParseToMeasure s.AnimaCost
+              AnimaCost = tryParseToMeasure s.AnimaLoss
               AnimaGain = tryParseToMeasure s.AnimaGain
               FavorGain = tryParseToMeasure s.FavorGain }
     match row, metadata with
@@ -245,7 +253,9 @@ let tryCreateCard main ally =
             MainAbility = MainRow main |> rowToAbility 
             Cost = parseCost main.TradeCost main.StrengthCost main.AnimaCost
             Favor = main.Favor >>= tryParse<uint>
-            Image = femaleHumanImage
+            Image = main.Image
+                    |> Option.map (fun s -> { Path = s; ScaleCorrection = 1.0; Opacity = 0.8 })
+                    |> Option.defaultValue { femaleHumanImage with Opacity = 0.8 }
             Count = cardCount
             ShowCount = main.ShowCardCount
             FlavorText = main.FlavorText

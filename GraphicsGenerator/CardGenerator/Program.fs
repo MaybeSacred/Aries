@@ -153,6 +153,9 @@ let drawFavor boundaries favor =
         >> (string i |> text largeSize TextAlignment.Center Center (favorRadius + inset + 2. * padding + 1.<dot>) (boundaries.Height - favorRadius - inset - 3. * padding - 1.<dot>))
     | None -> id
 
+let calculateCaptionText upgraded card =
+    $"""{(if upgraded then "Upgraded " else "")}{(match faction card with Some f -> f.Name + " " | None -> "")}{cardKind card}"""
+
 let drawCardCore boundaries (card: Card) (i: ImageState) =
     let data, upgraded = 
         match card with
@@ -187,7 +190,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // name
     |> captionText largeSize (iconCostDiameter + inset + padding) inset (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) ``3/8`` data.Name
     // faction-kind banner
-    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) (fontToDot smallSize + 2. * padding) $"""{(if upgraded then "Upgraded " else "")}{(match faction card with Some f -> f.Name + " " | None -> "")}{cardKind card}"""
+    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) (fontToDot smallSize + 2. * padding) (calculateCaptionText upgraded card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - textPadding) version
     // count
@@ -218,7 +221,7 @@ let drawGod boundaries (card: God) (i: ImageState) =
     // name
     |> captionText extraLargeSize (``3/8`` + inset) inset (godVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText medSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot medSize + 2. * padding) (cardKind <| God card)
+    |> captionText medSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot medSize + 2. * padding) (calculateCaptionText false <| God card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
 
@@ -248,7 +251,7 @@ let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     // name
     |> captionText largeSize (``3/8`` + inset) inset (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (cardKind <| Settlement card)
+    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (calculateCaptionText false <| Settlement card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
 
