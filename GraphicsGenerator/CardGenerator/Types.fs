@@ -33,7 +33,7 @@ type AbilityMetadata = {
     TradeGain: uint<trade> option
     StrengthGain: uint<strength> option
     AnimaGain: uint<anima> option
-    AnimaCost: uint<anima> option
+    AnimaLoss: uint<anima> option
     FavorGain: uint<favor> option
 }
 
@@ -41,7 +41,7 @@ let defaultMetadata = {
     TradeGain = None
     StrengthGain = None
     AnimaGain = None
-    AnimaCost = None
+    AnimaLoss = None
     FavorGain = None
 }
 
@@ -367,7 +367,7 @@ let nativeAmerican = {
         ScaleCorrection = 1.0
         Opacity = 1.
     }
-    Name = "Hopi"
+    Name = "Raviraw"//Ravirawan
 }
 
 let egyptian = {
@@ -496,7 +496,7 @@ let fort = Fortification {
                 TradeGain = Some 8u<trade>
                 StrengthGain = Some 8u<strength>
                 AnimaGain = Some 8u<anima>
-                AnimaCost = Some 8u<anima>
+                AnimaLoss = Some 8u<anima>
                 FavorGain = Some 8u<favor>
         } }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None } 
@@ -523,7 +523,7 @@ let zeus = God {
                 TradeGain = Some 8u<trade>
                 StrengthGain = Some 8u<strength>
                 AnimaGain = Some 8u<anima>
-                AnimaCost = Some 8u<anima>
+                AnimaLoss = Some 8u<anima>
                 FavorGain = Some 8u<favor>
         } }
         Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = Some 88u<anima> } 

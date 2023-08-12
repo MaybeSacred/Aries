@@ -217,11 +217,11 @@ let overlayImage (startX: float<dot>) (startY: float<dot>) (width: float<dot>) (
     let settings = MagickReadSettings()
     //settings.FillColor <- black
     settings.BackgroundColor <- MagickColors.Transparent
-    settings.ColorSpace <- ColorSpace.Gray
     let scaledHalfWidth, scaledHalfHeight = int <| icon.ScaleCorrection * width / 2., int <| icon.ScaleCorrection * height / 2.
     let size = MagickGeometry(scaledHalfWidth * 2, scaledHalfHeight * 2)
     use ii = new MagickImage(Path.Combine(basePath, ImagesFolder, icon.Path), settings)
     ii.Evaluate(Channels.Alpha, EvaluateOperator.Multiply, icon.Opacity)
+    ii.Grayscale(PixelIntensityMethod.RMS)
     ii.Resize(size) // lol the calcs aren't wrong, but scaled images appear 1 pixel too far to the top left corner
     i.Image.Composite(ii, 
         int startX + (if icon.ScaleCorrection <> 1. then (int (width / 2.) - scaledHalfWidth + 1) else 0), 

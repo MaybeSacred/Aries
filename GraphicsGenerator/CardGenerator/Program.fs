@@ -134,13 +134,13 @@ let drawLogo card =
         drawCardLogo s.Core.Image
         >> drawFortificationAbilities s
     | God { Core = c } ->
-        let w = (godVerticalMidpoint - (inset + 2. * padding))
+        let w = (godVerticalMidpoint - 2. * (inset + padding))
         overlayImage 
-            (godVerticalMidpoint / 2. - w / 2. + inset)
+            (godVerticalMidpoint / 2. - w / 2. + inset + padding)
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
     | Settlement { Core = c } -> 
-        let w = (settlementVerticalMidpoint - (inset + 2. * padding + ``1/2``))
+        let w = (settlementVerticalMidpoint - (2. * (inset + padding) + ``1/2``))
         overlayImage 
             (settlementVerticalMidpoint / 2. - w / 2.)
             (inset + 2. * padding + ``1/2``) 
@@ -195,7 +195,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - textPadding) version
     // count
     |> (if data.ShowCount then List.init (int data.Count) id else []
-        |> List.fold (fun s i -> s >> filledCircle black darkGray (boundaries.Width - inset - 0.35<inch> * dpi - (float i) * (fontToDot smallSize + padding)) (boundaries.Height - inset - padding - (fontToDot smallSize / 2.)) (favorCircleSize / 2.)) id)
+        |> List.fold (fun s i -> s >> filledCircle black darkGray (boundaries.Width - inset - 0.35<inch> * dpi - (float i) * (fontToDot smallSize + padding)) (boundaries.Height - inset - 2. * padding - (fontToDot smallSize / 2.)) (favorCircleSize / 2.)) id)
 
 let drawGod boundaries (card: God) (i: ImageState) =
     let nameBottom = fontToDot largeSize + inset + 2. * textPadding
@@ -219,9 +219,9 @@ let drawGod boundaries (card: God) (i: ImageState) =
     // ability area
     |> drawAbilities godVerticalMidpoint (inset + ``3/8`` + fontToDot smallSize + 2. * padding) (godVerticalMidpoint - inset) godAbilityBottomPoint (God card)
     // name
-    |> captionText extraLargeSize (``3/8`` + inset) inset (godVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
+    |> captionText largeSize (``3/8`` + inset) inset (godVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText medSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot medSize + 2. * padding) (calculateCaptionText false <| God card)
+    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (calculateCaptionText false <| God card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
 

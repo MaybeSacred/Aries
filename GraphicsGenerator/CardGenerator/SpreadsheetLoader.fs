@@ -226,21 +226,24 @@ let rowToAbility (row: RowKind) =
         | UpgradeAlly s -> 
             { TradeGain = tryParseToMeasure s.TradeGain
               StrengthGain = tryParseToMeasure s.StrengthGain
-              AnimaCost = tryParseToMeasure s.AnimaLoss
+              AnimaLoss = tryParseToMeasure s.AnimaLoss
               AnimaGain = tryParseToMeasure s.AnimaGain
               FavorGain = tryParseToMeasure s.FavorGain }
     match row, metadata with
-    | UpgradeMain s, { AnimaCost = None }
-    | MainRow s, { AnimaCost = None } -> 
+    | UpgradeAlly s, _
+    | AllyRow s, _
+    | UpgradeMain s, _
+    | MainRow s, _ -> 
         Plain { PlainOrTrashAbility.Text = s.Text; Metadata = metadata }
-    | UpgradeAlly s, { AnimaCost = None } 
-    | AllyRow s, { AnimaCost = None } -> 
-        Ally { Text = s.Text; Metadata = metadata; Faction = s.Faction }
-    | UpgradeMain s, { AnimaCost = Some c }
-    | MainRow s, { AnimaCost = Some c }
-    | UpgradeAlly s, { AnimaCost = Some c } 
-    | AllyRow s, { AnimaCost = Some c } -> 
-        Anima { Text = s.Text; Metadata = metadata; Cost = c }
+    //| UpgradeAlly s, { AnimaLoss = None } 
+    //| AllyRow s, { AnimaLoss = None } -> 
+    //    Ally { Text = s.Text; Metadata = metadata; Faction = s.Faction }
+    // TODO: remove anima icon temporarily
+    //| UpgradeMain s, { AnimaLoss = Some c }
+    //| MainRow s, { AnimaLoss = Some c }
+    //| UpgradeAlly s, { AnimaLoss = Some c } 
+    //| AllyRow s, { AnimaLoss = Some c } -> 
+    //    Anima { Text = s.Text; Metadata = metadata; Cost = c }
     | TrashRow s, _ -> 
         Trash { Text = s.Text; Metadata = metadata }
 
