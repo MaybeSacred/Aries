@@ -23,6 +23,7 @@ let godAbilityBottomPoint = godBoundaries.HeightInInches * dpi - 2. * (``1/8`` +
 
 // settlement
 let settlementVerticalMidpoint = (settlementBoundaries.WidthInInches - cardBoundaries.WidthInInches) * dpi - ``1/4``
+let settlementAbilityBottomPoint = settlementBoundaries.HeightInInches * dpi - 2. * (``1/8`` + inset)
 let settlementAbilityTopPoint = 1.5<inch> * dpi
 
 let iconCostRadius = ``3/16``
@@ -36,15 +37,16 @@ let favorDiameter = 2. * favorRadius
 // TODO: pick better icons for health, costs, anima gain
 let drawFortificationAbilities (fortification: Fortification) (i: ImageState) =
     let availableHeight = cardMidpoint - topTextBottom - textPadding
-    [ "H", Some <| float fortification.Health, healthBlue
+    [ "H", Some <| float fortification.Health, healthGreen
       "C", Option.map float fortification.Core.MainAbility.Metadata.TradeGain, tradeGold
       "S", Option.map float fortification.Core.MainAbility.Metadata.StrengthGain, strengthRed
-      "E", Option.map float fortification.Core.MainAbility.Metadata.AnimaGain, animaGreen ]
+      // wizards tower
+      "E", Option.map float fortification.Core.MainAbility.Metadata.AnimaGain, animaBlue ]
     |> List.mapi (fun i (abbr, v, color) -> 
         match v with
         | Some value ->
             filledCircle color darkGray (``5/32`` + inset + abilityIconPadding) (topTextBottom + textPadding + availableHeight * (float i / 4.) + ``5/32``) ``5/32``
-            >> (text largeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"+{int value}{abbr}")
+            >> (text largeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"{int value}{abbr}")
         | None -> id)
     |> List.iter (fun s -> s i |> ignore)
     i
@@ -74,14 +76,29 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
     let cardAbilityTwoThirdPoint = (bottom - top) * 2. / 3.
     let { MainAbility = main; FlavorText = flavor }, secondary = 
         match card with
-        | Human { Core = core; SecondaryAbility = ally } ->
-            core, ally
+        | Human { Core = core; SecondaryAbility = ally; GarrisonDamage = garriDmg } ->
+            { core with 
+                MainAbility = 
+                    core.MainAbility 
+                    |> updateAbilityText (fun s -> 
+                        match core.SubKind |>> String.trimWhiteSpaces , garriDmg with
+                        | Some "Soldier", Some u -> $"{s}. Deal {u} Damage if garrisoned against a Citizen" 
+                        | Some "Guard", Some u -> $"{s}. Deal {u} Damage if garrisoned against a Soldier" 
+                        | Some "Animist", Some u -> $"{s}. Deal {u} Damage if garrisoned against a Soldier or Guard" 
+                        | Some "Soldier", None | Some "Guard", None | Some "Animist", None -> 
+                            raise <| invalidOp $"Garrison card without damage %A{card}"
+                        | _ -> s
+                    ) }, ally
         | Building { Core = core }
         | Fortification { Core = core }
         | Nomad { Core = core }
         | Creature { Core = core }
         | Relic { Core = core } 
-        | God { Core = core } 
+        | God { Core = core } ->
+            { core with 
+                MainAbility = 
+                    core.MainAbility 
+                    |> updateAbilityText (fun s -> s + " (including this one)") }, None
         | Settlement { Core = core } ->
             core, None
     i 
@@ -109,7 +126,7 @@ let drawCostAt boundaries (cost: CardCost) =
         circle color 0 360 iconCostTextXOffset
         >> text extraExtraLargeSize TextAlignment.Center Center iconCostTextXOffset iconCostTextYOffset (string val')
     // inverse order
-    [cost.Anima |>> createIcon animaGreen; cost.Strength |>> createIcon strengthRed;  cost.Trade |>> createIcon tradeGold]
+    [cost.Anima |>> createIcon animaBlue; cost.Strength |>> createIcon strengthRed;  cost.Trade |>> createIcon tradeGold]
     |> List.choose id
     |> List.fold (fun (s, xOffset) t -> s >> t xOffset, xOffset - strengthXCenterOffset) (id, centerX)
     |> fst
@@ -136,7 +153,7 @@ let drawLogo card =
     | God { Core = c } ->
         let w = (godVerticalMidpoint - 2. * (inset + padding))
         overlayImage 
-            (godVerticalMidpoint / 2. - w / 2. + inset + padding)
+            (godVerticalMidpoint / 2. - w / 2. + (inset + padding) / 2.)
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
     | Settlement { Core = c } -> 
@@ -190,7 +207,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // name
     |> captionText largeSize (iconCostDiameter + inset + padding) inset (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) ``3/8`` data.Name
     // faction-kind banner
-    |> captionText smallSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) (fontToDot smallSize + 2. * padding) (calculateCaptionText upgraded card)
+    |> captionText kindBannerSize (iconCostDiameter + inset + padding) (inset + ``3/8``) (boundaries.Width - 2. * (iconCostDiameter + inset + padding)) (fontToDot kindBannerSize + 2. * padding) (calculateCaptionText upgraded card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - textPadding) version
     // count
@@ -221,7 +238,7 @@ let drawGod boundaries (card: God) (i: ImageState) =
     // name
     |> captionText largeSize (``3/8`` + inset) inset (godVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (calculateCaptionText false <| God card)
+    |> captionText kindBannerSize (``3/8`` + inset) (inset + ``3/8``) (godVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot kindBannerSize + 2. * padding) (calculateCaptionText false <| God card)
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
 
@@ -247,11 +264,13 @@ let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     // TODO: allow for three settlement abilities, with icons
     // health bar, favor schedule, regular favor placement, cost icons, flavor text
     // ability area
-    |> drawAbilities settlementVerticalMidpoint settlementAbilityTopPoint (boundaries.Width - settlementVerticalMidpoint - inset) cardAbilityBottomPoint (Settlement card)
+    |> drawAbilities inset settlementVerticalMidpoint (settlementVerticalMidpoint - inset) settlementAbilityBottomPoint (Settlement card)
     // name
     |> captionText largeSize (``3/8`` + inset) inset (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText smallSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot smallSize + 2. * padding) (calculateCaptionText false <| Settlement card)
+    |> captionText kindBannerSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot kindBannerSize + 2. * padding) (calculateCaptionText false <| Settlement card)
+    // garrison
+    |> captionText medSize (settlementVerticalMidpoint + ``3/8`` + inset) ((settlementBoundaries.Height - ``3/8``) / 2.) (settlementBoundaries.Width - settlementVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` "You may Garrison a card here"
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
 
@@ -275,7 +294,7 @@ let drawAt card boundaries startX startY (masterImage: MagickImage) =
     printfn $"Drawing card {card} at position {(startX, startY)}"
     masterImage.Composite(image, startX, startY, CompositeOperator.Over)
 
-let drawToFile (path: string) compositeCards (cards: Card list) =
+let drawToFile (path: string) (compositeCards, cardsPerRow) (cards: Card list) =
     let boundaries = 
         match cards[0] with 
         | Settlement _  -> settlementBoundaries
@@ -283,10 +302,10 @@ let drawToFile (path: string) compositeCards (cards: Card list) =
         | _ -> cardBoundaries
     use image = 
         new MagickImage(MagickColors.White,
-            (if compositeCards then 3 * int boundaries.XPixelCount + 4 else int boundaries.XPixelCount),
-             if compositeCards then 3 * int boundaries.YPixelCount + 4 else int boundaries.YPixelCount)
+            (if compositeCards then cardsPerRow * int boundaries.XPixelCount + (cardsPerRow * 2 - 2) else int boundaries.XPixelCount),
+             if compositeCards then cardsPerRow * int boundaries.YPixelCount + (cardsPerRow * 2 - 2) else int boundaries.YPixelCount)
     image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
-    for (x, y, c) in cards |> List.mapi (fun i c -> (i / 3 * (int boundaries.XPixelCount) + 2 * (i / 3), i % 3 * (int boundaries.YPixelCount) + 2 * (i % 3), c)) do 
+    for (x, y, c) in cards |> List.mapi (fun i c -> (i / cardsPerRow * (int boundaries.XPixelCount) + 2 * (i / cardsPerRow), i % cardsPerRow * (int boundaries.YPixelCount) + 2 * (i % cardsPerRow), c)) do 
         drawAt c boundaries x y image
     let name = 
         if compositeCards then 
@@ -295,8 +314,9 @@ let drawToFile (path: string) compositeCards (cards: Card list) =
             List.head cards |> name |> String.filter (fun c -> c <> ' ')
     image.Write $"{path}\{name}.png"
 
-let drawAllCards = false
-let compositeCards = false
+let drawAllCards = true
+let compositeCards = true
+let drawSamples = false
 
 let outputPath = System.IO.Path.Combine(basePath, GeneratedFolder)
 if Directory.Exists outputPath then
@@ -304,43 +324,46 @@ if Directory.Exists outputPath then
 Directory.CreateDirectory outputPath |> ignore
 
 try
-    let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
-    File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
-    cards 
-    |> List.map (
-        function 
-        | Creature c -> 
-            let prependFavor text = String.concat Environment.NewLine [$"Gain {c.Core.Favor.Value} Favor"; text]
-            Creature { c 
-                        with 
-                        Core = { c.Core 
-                                    with 
-                                    Favor = None
-                                    MainAbility = match c.Core.MainAbility with 
-                                                  | Plain p -> Plain { p with Text = prependFavor p.Text }
-                                                  | Ally p -> Ally { p with Text = prependFavor p.Text }
-                                                  | Anima p -> Anima { p with Text = prependFavor p.Text }
-                                                  | Trash p -> Trash { p with Text = prependFavor p.Text }
-                        } }
-        | s -> s
-    )
-    //sampleCards
-    |> List.groupBy (
+    if drawSamples then
+        sampleCards
+    else
+        let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
+        File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
+        cards 
+        |> List.map (
+            function 
+            | Creature c -> 
+                let prependFavor text = String.concat Environment.NewLine [$"Gain {c.Core.Favor.Value} Favor"; text]
+                Creature { c 
+                            with 
+                            Core = { c.Core 
+                                        with 
+                                        Favor = None
+                                        MainAbility = match c.Core.MainAbility with 
+                                                      | Plain p -> Plain { p with Text = prependFavor p.Text }
+                                                      | Ally p -> Ally { p with Text = prependFavor p.Text }
+                                                      | Anima p -> Anima { p with Text = prependFavor p.Text }
+                                                      | Trash p -> Trash { p with Text = prependFavor p.Text }
+                            } }
+            | s -> s
+        )
+    |> Seq.groupBy (
         function 
         | Settlement _ -> "s", 4
         | God _ -> "g", 4
         | _ -> "o", 9
     )
-    |> List.collect (fun ((_, perPage),c) -> 
+    |> PSeq.collect (fun ((_, perPage),c) -> 
         c
-        |> List.collect (fun c -> 
+        |> Seq.collect (fun c -> 
             konst c 
             |> List.init (if drawAllCards then int (core c).Count else 1)
         )
-        |> List.sortBy name
-        |> List.chunkBySize (if compositeCards then perPage else 1)
+        |> Seq.sortBy name
+        |> Seq.chunkBySize (if compositeCards then perPage else 1)
+        |> Seq.map (List.ofArray >> tuple2 perPage)
     )
-    |> PSeq.iter (drawToFile outputPath compositeCards)
+    |> PSeq.iter (fun (count, card) -> drawToFile outputPath (compositeCards, if count = 4 then 2 else 3) card)
 finally
     for i in cardCache do
         i.Value.Dispose()

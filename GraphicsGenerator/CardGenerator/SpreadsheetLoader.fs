@@ -40,7 +40,7 @@ let TradeGainCol = "K"
 [<Literal>]
 let StrengthGainCol = "L"
 [<Literal>]
-let PermanentAnimaGainCol = "M"
+let GarrisonDamageCol = "M"
 [<Literal>]
 let AnimaGainCol = "N"
 [<Literal>]
@@ -82,6 +82,7 @@ type PartialCard = {
     StrengthCost: string option
     AnimaCost: string option
     Favor: string option
+    GarrisonDamage: string option
     TradeGain: string option
     StrengthGain: string option
     AnimaLoss: string option
@@ -179,6 +180,7 @@ let tryReadRow (r: ParsedRow) =
         let animaLoss = itemAt AnimaLossCol r 
         let animaGain = itemAt AnimaGainCol r 
         let favorGain = itemAt FavorGainCol r 
+        let garrisonDamage = itemAt GarrisonDamageCol r 
         let fortificationHealth = itemAt FortificationHealthCol r 
         let upgradeCost = itemAt UpgradeCostCol r >>= parseNumeric
         let flavorText = itemAt FlavorTextCol r 
@@ -198,6 +200,7 @@ let tryReadRow (r: ParsedRow) =
             StrengthCost = strengthCost
             AnimaCost = animaCost
             Favor = favor
+            GarrisonDamage = garrisonDamage
             TradeGain = tradeGain
             StrengthGain = strengthGain
             AnimaLoss = animaLoss

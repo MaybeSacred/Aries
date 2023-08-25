@@ -82,6 +82,13 @@ type Ability =
         | Anima s -> s.Metadata
         | Trash s -> s.Metadata
 
+let updateAbilityText t =
+    function
+    | Plain s -> Plain { s with Text = t s.Text }
+    | Ally s -> Ally { s with Text = t s.Text }
+    | Anima s -> Anima { s with Text = t s.Text }
+    | Trash s -> Trash { s with Text = t s.Text }
+
 type CardCost = {
     Trade: uint<trade> option
     Strength: uint<strength> option
@@ -113,6 +120,7 @@ type Human = {
     Faction: FactionData
     SecondaryAbility: Ability option
     Upgraded: bool
+    GarrisonDamage: uint option
 }
 
 type Building = {
@@ -174,18 +182,6 @@ type Card =
     | Creature of Creature
     | Relic of Relic
 
-
-let faction =
-    function  
-    | Fortification { Faction = f } 
-    | Human { Faction = f } 
-    | Building { Faction = f } 
-    | Settlement { Faction = f } 
-    | God { Faction = f }
-        -> Some f
-    | Nomad _ 
-    | Creature _ 
-    | Relic _ -> None
 
 let core =
     function
@@ -298,6 +294,20 @@ let unaligned = {
     Icon = None
     Name = "Unaligned"
 }
+
+let faction =
+    function  
+    | Fortification { Faction = f } 
+    | Human { Faction = f } 
+    | Building { Faction = f } 
+    | Settlement { Faction = f } 
+    | God { Faction = f }
+        when f <> unaligned
+        -> Some f
+    | Nomad _ 
+    | Creature _ 
+    | Relic _ 
+    | _ -> None
 
 let all = {
     Primary = MagickColors.AntiqueWhite
@@ -424,6 +434,7 @@ let hero = {
         SubKind = Some "Soldier"
     }
     Faction = druidic
+    GarrisonDamage = Some 2u
     SecondaryAbility = Some <| Ally { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; Faction = druidic }
     Upgraded = true
 }

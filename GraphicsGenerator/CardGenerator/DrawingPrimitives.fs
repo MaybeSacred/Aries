@@ -56,8 +56,8 @@ let medGray = MagickColor(0x46uy, 0x58uy, 0x58uy)
 let black = MagickColor(0x00uy, 0x00uy, 0x00uy)
 let tradeGold = colorWithOpacity MagickColors.Gold 0x70uy
 let strengthRed = colorWithOpacity MagickColors.Red 0x70uy
-let healthBlue = colorWithOpacity MagickColors.CornflowerBlue 0x68uy
-let animaGreen = colorWithOpacity MagickColors.LawnGreen 0x68uy
+let animaBlue = colorWithOpacity MagickColors.CornflowerBlue 0x68uy
+let healthGreen = colorWithOpacity MagickColors.LawnGreen 0x68uy
 
 [<Literal>]
 let dpi = 300.<dot/inch>
@@ -124,6 +124,8 @@ let inset = 14.<dot>
 let favorCircleSize = 18.<dot>
 [<Literal>]
 let smallSize = 6.<fontPoint>
+[<Literal>]
+let kindBannerSize = 7.<fontPoint>
 [<Literal>]
 let medSize = 8.<fontPoint>
 [<Literal>]
