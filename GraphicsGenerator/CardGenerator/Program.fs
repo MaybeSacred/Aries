@@ -34,19 +34,26 @@ let iconCostTextYOffset = iconCostRadius + inset - quanta
 let favorRadius = ``1/8`` - quanta
 let favorDiameter = 2. * favorRadius
 
+// TODO: add health to settlements
+// add new faction
+// draw some, scrap
+// draw 1, gain anima
+// a few more monsters that give resources
+// wizards tower
+// event cards that deal damage to settlements, discard garrisoned units, discard
 // TODO: pick better icons for health, costs, anima gain
-let drawFortificationAbilities (fortification: Fortification) (i: ImageState) =
-    let availableHeight = cardMidpoint - topTextBottom - textPadding
-    [ "H", Some <| float fortification.Health, healthGreen
-      "C", Option.map float fortification.Core.MainAbility.Metadata.TradeGain, tradeGold
-      "S", Option.map float fortification.Core.MainAbility.Metadata.StrengthGain, strengthRed
-      // wizards tower
-      "E", Option.map float fortification.Core.MainAbility.Metadata.AnimaGain, animaBlue ]
-    |> List.mapi (fun i (abbr, v, color) -> 
+
+let drawFortificationAbilities (core: CardCore, health) textSize top radius (i: ImageState) =
+    let availableHeight = cardMidpoint - top - textPadding
+    [ Some <| float health, healthGreen
+      Option.map float core.MainAbility.Metadata.TradeGain, tradeGold
+      Option.map float core.MainAbility.Metadata.StrengthGain, strengthRed
+      Option.map float core.MainAbility.Metadata.AnimaGain, animaBlue ]
+    |> List.mapi (fun i (v, color) -> 
         match v with
         | Some value ->
-            filledCircle color darkGray (``5/32`` + inset + abilityIconPadding) (topTextBottom + textPadding + availableHeight * (float i / 4.) + ``5/32``) ``5/32``
-            >> (text largeSize TextAlignment.Center Center (``5/32`` + inset + abilityIconPadding + quanta) (topTextBottom + textPadding + availableHeight * (float i / 4.) + (``5/32`` - padding)) <| $"{int value}{abbr}")
+            filledCircle color darkGray (radius + inset + abilityIconPadding) (top + textPadding + availableHeight * (float i / 4.) + radius) radius
+            >> (text textSize TextAlignment.Center Center (radius + inset + abilityIconPadding + quanta) (top + textPadding + availableHeight * (float i / 4.) + (radius - padding)) <| $"{int value}")
         | None -> id)
     |> List.iter (fun s -> s i |> ignore)
     i
@@ -89,16 +96,16 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
                             raise <| invalidOp $"Garrison card without damage %A{card}"
                         | _ -> s
                     ) }, ally
-        | Building { Core = core }
-        | Fortification { Core = core }
-        | Nomad { Core = core }
-        | Creature { Core = core }
-        | Relic { Core = core } 
         | God { Core = core } ->
             { core with 
                 MainAbility = 
                     core.MainAbility 
                     |> updateAbilityText (fun s -> s + " (including this one)") }, None
+        | Building { Core = core }
+        | Fortification { Core = core }
+        | Nomad { Core = core }
+        | Creature { Core = core }
+        | Relic { Core = core } 
         | Settlement { Core = core } ->
             core, None
     i 
@@ -119,7 +126,6 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
 
 let drawCostAt boundaries (cost: CardCost) =
     let centerX = boundaries.Width - iconCostOffset
-    let textCenterX = boundaries.Width - iconCostTextXOffset
     let circle fill from to' x = filledArc fill darkGray from to' x iconCostOffset iconCostRadius
     let strengthXCenterOffset = iconCostDiameter + 2. * padding
     let createIcon color val' iconCostTextXOffset =
@@ -149,19 +155,20 @@ let drawLogo card =
         |> drawCardLogo
     | Fortification s -> 
         drawCardLogo s.Core.Image
-        >> drawFortificationAbilities s
+        >> drawFortificationAbilities (s.Core, s.Health) extraLargeSize topTextBottom ``5/32``
     | God { Core = c } ->
         let w = (godVerticalMidpoint - 2. * (inset + padding))
         overlayImage 
             (godVerticalMidpoint / 2. - w / 2. + (inset + padding) / 2.)
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
-    | Settlement { Core = c } -> 
+    | Settlement { Core = c; Health = h } -> 
         let w = (settlementVerticalMidpoint - (2. * (inset + padding) + ``1/2``))
         overlayImage 
             (settlementVerticalMidpoint / 2. - w / 2.)
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
+        >> drawFortificationAbilities (c, h) extraExtraLargeSize (inset + padding) ``3/16``
 
 let drawFavor boundaries favor =
     match favor with

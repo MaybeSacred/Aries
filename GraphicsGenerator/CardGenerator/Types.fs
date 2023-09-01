@@ -110,7 +110,7 @@ type CardCore = {
     Image: ImageData
     Count: uint
     ShowCount: bool
-    Favor: uint option
+    Favor: uint<favor> option
     FlavorText: string option
     SubKind: string option
 }
@@ -120,7 +120,7 @@ type Human = {
     Faction: FactionData
     SecondaryAbility: Ability option
     Upgraded: bool
-    GarrisonDamage: uint option
+    GarrisonDamage: uint<strength> option
 }
 
 type Building = {
@@ -361,7 +361,7 @@ let ancient = {
 }
 
 let indian = {
-    Primary = MagickColors.RebeccaPurple
+    Primary = MagickColors.MediumPurple
     Icon = Some {
         Path = @"indian-logo-3.webp"
         ScaleCorrection = 1.3
@@ -426,7 +426,7 @@ let hero = {
         Name = "Hero"
         MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None }
-        Favor = Some 88u
+        Favor = Some 88u<favor>
         Image = femaleHumanImage
         Count = 3u
         ShowCount = true
@@ -434,7 +434,7 @@ let hero = {
         SubKind = Some "Soldier"
     }
     Faction = druidic
-    GarrisonDamage = Some 2u
+    GarrisonDamage = Some 2u<strength>
     SecondaryAbility = Some <| Ally { Text = "Draw 1 card. Some other really long text to see what happens"; Metadata = defaultMetadata; Faction = druidic }
     Upgraded = true
 }
@@ -444,7 +444,7 @@ let bookOfTheDead = Relic {
         Name = "Book of the Dead"
         MainAbility = Trash { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = None; Strength = None; Anima = Some 88u<anima> } 
-        Favor = Some 88u
+        Favor = Some 88u<favor>
         Image = relicImage
         Count = 3u
         ShowCount = true
@@ -458,7 +458,7 @@ let building = Building {
         Name = "Temple of Babylon"
         MainAbility = Anima { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata; Cost = 88u<anima> }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None } 
-        Favor = Some 88u
+        Favor = Some 88u<favor>
         Image = buildingImage
         Count = 3u
         ShowCount = true
@@ -475,7 +475,7 @@ let ogre = Creature {
         Name = "Ogre"
         MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = None; Strength = Some 88u<strength>; Anima = None } 
-        Favor = Some 1u
+        Favor = Some 1u<favor>
         Image = creature1Image
         Count = 1u
         ShowCount = false
@@ -489,7 +489,7 @@ let camelArcher = Nomad {
         Name = "Camel Archer"
         MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None } 
-        Favor = Some 1u
+        Favor = Some 1u<favor>
         Image = nomadImage
         Count = 1u
         ShowCount = false
@@ -511,7 +511,7 @@ let fort = Fortification {
                 FavorGain = Some 8u<favor>
         } }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = None } 
-        Favor = Some 88u
+        Favor = Some 88u<favor>
         Image = fortificationImage
         Count = 3u
         ShowCount = true
@@ -538,7 +538,7 @@ let zeus = God {
                 FavorGain = Some 8u<favor>
         } }
         Cost = { Trade = Some 88u<trade>; Strength = Some 88u<strength>; Anima = Some 88u<anima> } 
-        Favor = Some 88u
+        Favor = Some 88u<favor>
         Image = godImage
         Count = 3u
         ShowCount = true
@@ -553,7 +553,7 @@ let settlement = Settlement {
         Name = "Vegas"
         MainAbility = Plain { Text = "Draw 1 card. Some really long text to see what happens"; Metadata = defaultMetadata }
         Cost = { Trade = Some 88u<trade>; Strength = None; Anima = Some 88u<anima> } 
-        Favor = Some 88u
+        Favor = Some 88u<favor>
         Image = settlementImage
         Count = 1u
         ShowCount = true

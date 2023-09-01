@@ -54,10 +54,10 @@ let colorWithOpacity (color: IMagickColor<byte>) opacity = MagickColor(color.R, 
 let darkGray = MagickColor(0x14uy, 0x1Duy, 0x1Duy)
 let medGray = MagickColor(0x46uy, 0x58uy, 0x58uy)
 let black = MagickColor(0x00uy, 0x00uy, 0x00uy)
-let tradeGold = colorWithOpacity MagickColors.Gold 0x70uy
-let strengthRed = colorWithOpacity MagickColors.Red 0x70uy
-let animaBlue = colorWithOpacity MagickColors.CornflowerBlue 0x68uy
-let healthGreen = colorWithOpacity MagickColors.LawnGreen 0x68uy
+let tradeGold = colorWithOpacity MagickColors.Gold 0x88uy
+let strengthRed = colorWithOpacity MagickColors.Red 0x88uy
+let animaBlue = colorWithOpacity MagickColors.RebeccaPurple 0x88uy
+let healthGreen = colorWithOpacity MagickColors.LawnGreen 0x88uy
 
 [<Literal>]
 let dpi = 300.<dot/inch>

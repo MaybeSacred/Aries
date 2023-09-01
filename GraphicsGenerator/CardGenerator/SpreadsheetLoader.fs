@@ -258,7 +258,7 @@ let tryCreateCard main ally =
             Name = main.Name
             MainAbility = MainRow main |> rowToAbility 
             Cost = parseCost main.TradeCost main.StrengthCost main.AnimaCost
-            Favor = main.Favor >>= tryParse<uint>
+            Favor = main.Favor |> tryParseToMeasure<favor>
             Image = main.Image
                     |> Option.map (fun s -> { Path = s; ScaleCorrection = 1.0; Opacity = 0.8 })
                     |> Option.defaultValue { femaleHumanImage with Opacity = 0.8 }
@@ -273,6 +273,7 @@ let tryCreateCard main ally =
             return Human {
                 Core = core
                 Faction = main.Faction
+                GarrisonDamage = main.GarrisonDamage |> tryParseToMeasure<strength>
                 SecondaryAbility = ally
                 Upgraded = upgraded
             }
