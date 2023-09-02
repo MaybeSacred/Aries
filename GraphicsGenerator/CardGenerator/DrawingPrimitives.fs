@@ -152,8 +152,10 @@ let ImagesFolder = @"Images"
 [<Literal>]
 let ProductionCardFolder = @"Cards"
 
-[<Literal>]
-let GeneratedFolder = @"Generated"
+let [<Literal>] GeneratedFolder = @"Generated"
+let [<Literal>] GodFolder = @"Gods"
+let [<Literal>] SettlementFolder = @"Settlements"
+let [<Literal>] MainFolder = @"Main"
 
 let basePath =
     Environment.GetCommandLineArgs() 

@@ -101,10 +101,15 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
                 MainAbility = 
                     core.MainAbility 
                     |> updateAbilityText (fun s -> s + " (including this one)") }, None
+        | Creature { Core = core } ->
+            let prependFavor text = String.concat Environment.NewLine [$"Gain {core.Favor.Value} Favor"; text]
+            { core with 
+                MainAbility = 
+                    core.MainAbility 
+                    |> updateAbilityText prependFavor }, None
         | Building { Core = core }
         | Fortification { Core = core }
         | Nomad { Core = core }
-        | Creature { Core = core }
         | Relic { Core = core } 
         | Settlement { Core = core } ->
             core, None
@@ -180,6 +185,30 @@ let drawFavor boundaries favor =
 let calculateCaptionText upgraded card =
     $"""{(if upgraded then "Upgraded " else "")}{(match faction card with Some f -> f.Name + " " | None -> "")}{cardKind card}"""
 
+type DrawingOptions = {
+    Rows: int
+    Columns: int
+}
+let groupSize d = d.Rows * d.Columns
+
+let ``2 x 2`` = { Rows = 2; Columns = 2 }
+let ``3 x 3`` = { Rows = 3; Columns = 3 }
+let ttsOptions = { Rows = 1; Columns = 1 }
+//let ttsOptions = { Rows = 10; Columns = 7 }
+
+type PaperPrintout = {
+    Samples: bool 
+    DrawAllCards: bool
+    CompositeCards: bool
+    MainOptions: DrawingOptions
+    GodOptions: DrawingOptions 
+    SettlementOptions: DrawingOptions
+}
+
+type DrawingMode = 
+    | TTS of DrawingOptions
+    | PaperPrintout of PaperPrintout
+
 let drawCardCore boundaries (card: Card) (i: ImageState) =
     let data, upgraded = 
         match card with
@@ -249,7 +278,6 @@ let drawGod boundaries (card: God) (i: ImageState) =
     // version
     |> text smallSize TextAlignment.Right Bottom (boundaries.Width - inset - padding) (boundaries.Height - inset - padding) version
 
-
 let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     let nameBottom = fontToDot largeSize + inset + 2. * textPadding
     //let leftRectangle = { boundaries with Width }
@@ -301,76 +329,84 @@ let drawAt card boundaries startX startY (masterImage: MagickImage) =
     printfn $"Drawing card {card} at position {(startX, startY)}"
     masterImage.Composite(image, startX, startY, CompositeOperator.Over)
 
-let drawToFile (path: string) (compositeCards, cardsPerRow) (cards: Card list) =
-    let boundaries = 
-        match cards[0] with 
-        | Settlement _  -> settlementBoundaries
-        | God _  -> godBoundaries
-        | _ -> cardBoundaries
+let drawToFile (path: string) options (cards: Card list) =
+    let boundaries, drawingOptions, compositeCards, margin, subPath = 
+        match cards[0], options with 
+        | Settlement _, PaperPrintout { SettlementOptions = s; CompositeCards = c } -> settlementBoundaries, s, c, 2, SettlementFolder
+        | God _, PaperPrintout { GodOptions = s; CompositeCards = c }  -> godBoundaries, s, c, 2, GodFolder
+        | _, PaperPrintout { MainOptions = s; CompositeCards = c } -> cardBoundaries, s, c, 2, MainFolder
+        | Settlement _, TTS s -> settlementBoundaries, s, true, 0, SettlementFolder
+        | God _, TTS s -> godBoundaries, s, true, 0, GodFolder
+        | _, TTS s -> cardBoundaries, s, true, 0, MainFolder
     use image = 
         new MagickImage(MagickColors.White,
-            (if compositeCards then cardsPerRow * int boundaries.XPixelCount + (cardsPerRow * 2 - 2) else int boundaries.XPixelCount),
-             if compositeCards then cardsPerRow * int boundaries.YPixelCount + (cardsPerRow * 2 - 2) else int boundaries.YPixelCount)
+            (if compositeCards then drawingOptions.Rows * int boundaries.XPixelCount + (drawingOptions.Rows * margin - margin) else int boundaries.XPixelCount),
+             if compositeCards then drawingOptions.Columns * int boundaries.YPixelCount + (drawingOptions.Columns * margin - margin) else int boundaries.YPixelCount)
     image.Density <- Density(float dpi, DensityUnit.PixelsPerInch)
-    for (x, y, c) in cards |> List.mapi (fun i c -> (i / cardsPerRow * (int boundaries.XPixelCount) + 2 * (i / cardsPerRow), i % cardsPerRow * (int boundaries.YPixelCount) + 2 * (i % cardsPerRow), c)) do 
+    for (x, y, c) in 
+        cards 
+        |> List.mapi (fun i c -> 
+            (i / drawingOptions.Rows * (int boundaries.XPixelCount) + margin * (i / drawingOptions.Rows), 
+             i % drawingOptions.Columns * (int boundaries.YPixelCount) + margin * (i % drawingOptions.Columns), c)) do 
         drawAt c boundaries x y image
     let name = 
-        if compositeCards then 
+        match options with
+        | TTS _ ->
+            let c = List.head cards |> core
+            $"%02i{c.Count}x {c.Name |> String.filter (fun c -> c <> ' ')}"
+        | PaperPrintout { CompositeCards = true } ->
             Guid.NewGuid().ToString() 
-        else 
+        | _ -> 
             List.head cards |> name |> String.filter (fun c -> c <> ' ')
-    image.Write $"{path}\{name}.png"
+    image.Write $"{path}\{subPath}\{name}.png"
 
-let drawAllCards = true
-let compositeCards = true
-let drawSamples = false
+//let drawingMode = TTS ttsOptions
+let drawingMode = PaperPrintout {
+    Samples = false
+    DrawAllCards = true
+    CompositeCards = true
+    MainOptions = ``3 x 3``
+    GodOptions = ``2 x 2``
+    SettlementOptions = ``2 x 2``
+}
 
-let outputPath = System.IO.Path.Combine(basePath, GeneratedFolder)
-if Directory.Exists outputPath then
-    Directory.Delete(outputPath, true)
-Directory.CreateDirectory outputPath |> ignore
+let outputDirectory = Path.Combine(basePath, GeneratedFolder)
+if Directory.Exists outputDirectory then
+    Directory.Delete(outputDirectory, true)
+Directory.CreateDirectory outputDirectory |> ignore
+Path.Combine(outputDirectory, MainFolder) |> Directory.CreateDirectory |> ignore
+Path.Combine(outputDirectory, SettlementFolder) |> Directory.CreateDirectory |> ignore
+Path.Combine(outputDirectory, GodFolder) |> Directory.CreateDirectory |> ignore
 
 try
-    if drawSamples then
+    match drawingMode with
+    | PaperPrintout { Samples = true } ->
         sampleCards
-    else
+    | _ ->
         let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
         File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
-        cards 
-        |> List.map (
-            function 
-            | Creature c -> 
-                let prependFavor text = String.concat Environment.NewLine [$"Gain {c.Core.Favor.Value} Favor"; text]
-                Creature { c 
-                            with 
-                            Core = { c.Core 
-                                        with 
-                                        Favor = None
-                                        MainAbility = match c.Core.MainAbility with 
-                                                      | Plain p -> Plain { p with Text = prependFavor p.Text }
-                                                      | Ally p -> Ally { p with Text = prependFavor p.Text }
-                                                      | Anima p -> Anima { p with Text = prependFavor p.Text }
-                                                      | Trash p -> Trash { p with Text = prependFavor p.Text }
-                            } }
-            | s -> s
-        )
+        cards
     |> Seq.groupBy (
-        function 
-        | Settlement _ -> "s", 4
-        | God _ -> "g", 4
-        | _ -> "o", 9
+        fun c ->
+            match c, drawingMode with
+            | Settlement _, TTS a -> "s", groupSize a
+            | God _, TTS a -> "g", groupSize a
+            | _, TTS a -> "o", groupSize a
+            | Settlement _, PaperPrintout { SettlementOptions = s } -> "s", groupSize s
+            | God _, PaperPrintout { GodOptions = g } -> "g", groupSize g
+            | _, PaperPrintout { MainOptions = m } -> "o", groupSize m
     )
-    |> PSeq.collect (fun ((_, perPage),c) -> 
+    |> Seq.collect (fun ((_, perPage),c) -> 
         c
         |> Seq.collect (fun c -> 
             konst c 
-            |> List.init (if drawAllCards then int (core c).Count else 1)
+            |> List.init (match drawingMode with | PaperPrintout { CompositeCards = true } -> int (core c).Count | _ -> 1)
         )
         |> Seq.sortBy name
-        |> Seq.chunkBySize (if compositeCards then perPage else 1)
-        |> Seq.map (List.ofArray >> tuple2 perPage)
+        |> Seq.chunkBySize (match drawingMode with | PaperPrintout { CompositeCards = true } -> perPage | _ -> 1)
+        |> Seq.map List.ofArray
     )
-    |> PSeq.iter (fun (count, card) -> drawToFile outputPath (compositeCards, if count = 4 then 2 else 3) card)
+    |> PSeq.iter (fun card -> drawToFile outputDirectory drawingMode card)
 finally
     for i in cardCache do
         i.Value.Dispose()
