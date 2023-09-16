@@ -101,6 +101,16 @@ type Slot =
     | BuildingSlot
     | Garrison
 
+type Deck =
+    | Starter
+    | Supplier
+    | Infantry
+    | Mage
+    | Market
+    | GodDeck
+    | SettlementDeck
+    | StarterSettlement
+
 // it's card-core parkour
 // TODO: add card image
 type CardCore = {
@@ -113,6 +123,7 @@ type CardCore = {
     Favor: uint<favor> option
     FlavorText: string option
     SubKind: string option
+    Deck: Deck
 }
 
 type Human = {
@@ -432,6 +443,7 @@ let hero = {
         ShowCount = true
         FlavorText = Some "Flavor text"
         SubKind = Some "Soldier"
+        Deck = Starter
     }
     Faction = druidic
     GarrisonDamage = Some 2u<strength>
@@ -450,6 +462,7 @@ let bookOfTheDead = Relic {
         ShowCount = true
         FlavorText = Some "Flavor text"
         SubKind = None
+        Deck = Market
     }
 }
 
@@ -464,6 +477,7 @@ let building = Building {
         ShowCount = true
         FlavorText = Some "Flavor text"
         SubKind = None
+        Deck = Market
     }
     Faction = sumerian
     Upgraded = false
@@ -481,6 +495,7 @@ let ogre = Creature {
         ShowCount = false
         FlavorText = Some "Flavor text"
         SubKind = None
+        Deck = Market
     }
 }
 
@@ -495,6 +510,7 @@ let camelArcher = Nomad {
         ShowCount = false
         FlavorText = Some "Flavor text"
         SubKind = None
+        Deck = Market
     }
 }
 
@@ -517,6 +533,7 @@ let fort = Fortification {
         ShowCount = true
         FlavorText = Some "Flavor text"
         SubKind = None
+        Deck = Market
     }
     Faction = indian
     Health = 9u<hp>
@@ -544,6 +561,7 @@ let zeus = God {
         ShowCount = true
         FlavorText = Some "Flavor text"
         SubKind = Some "Thunder"
+        Deck = GodDeck
     }
     Faction = ancient
 }
@@ -559,6 +577,7 @@ let settlement = Settlement {
         ShowCount = true
         FlavorText = Some "Flavor text"
         SubKind = None
+        Deck = StarterSettlement
     }
     Faction = unaligned
     Health = 8u<hp>

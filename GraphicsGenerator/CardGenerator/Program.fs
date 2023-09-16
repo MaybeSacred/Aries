@@ -89,10 +89,12 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
                     core.MainAbility 
                     |> updateAbilityText (fun s -> 
                         match core.SubKind |>> String.trimWhiteSpaces , garriDmg with
-                        | Some "Soldier", Some u -> $"{s}. Deal {u} Damage if garrisoned against a Citizen" 
+                        | Some "Soldier", Some u -> $"{s}. Deal {u} Damage if garrisoned against an Animist" 
                         | Some "Guard", Some u -> $"{s}. Deal {u} Damage if garrisoned against a Soldier" 
-                        | Some "Animist", Some u -> $"{s}. Deal {u} Damage if garrisoned against a Soldier or Guard" 
-                        | Some "Soldier", None | Some "Guard", None | Some "Animist", None -> 
+                        | Some "Animist", Some u -> $"{s}. Deal {u} Damage if garrisoned against a Guard" 
+                        | Some "Soldier", None 
+                        | Some "Guard", None 
+                        | Some "Animist", None -> 
                             raise <| invalidOp $"Garrison card without damage %A{card}"
                         | _ -> s
                     ) }, ally
@@ -335,9 +337,9 @@ let drawToFile (path: string) options (cards: Card list) =
         | Settlement _, PaperPrintout { SettlementOptions = s; CompositeCards = c } -> settlementBoundaries, s, c, 2, SettlementFolder
         | God _, PaperPrintout { GodOptions = s; CompositeCards = c }  -> godBoundaries, s, c, 2, GodFolder
         | _, PaperPrintout { MainOptions = s; CompositeCards = c } -> cardBoundaries, s, c, 2, MainFolder
-        | Settlement _, TTS s -> settlementBoundaries, s, true, 0, SettlementFolder
-        | God _, TTS s -> godBoundaries, s, true, 0, GodFolder
-        | _, TTS s -> cardBoundaries, s, true, 0, MainFolder
+        | Settlement a, TTS s -> settlementBoundaries, s, true, 0, string a.Core.Deck 
+        | God a, TTS s -> godBoundaries, s, true, 0, string a.Core.Deck 
+        | a, TTS s -> cardBoundaries, s, true, 0, string (core a).Deck 
     use image = 
         new MagickImage(MagickColors.White,
             (if compositeCards then drawingOptions.Rows * int boundaries.XPixelCount + (drawingOptions.Rows * margin - margin) else int boundaries.XPixelCount),
@@ -353,30 +355,27 @@ let drawToFile (path: string) options (cards: Card list) =
         match options with
         | TTS _ ->
             let c = List.head cards |> core
-            $"%02i{c.Count}x {c.Name |> String.filter (fun c -> c <> ' ')}"
+            $"%02i{c.Count}x {c.Name}"
         | PaperPrintout { CompositeCards = true } ->
             Guid.NewGuid().ToString() 
         | _ -> 
-            List.head cards |> name |> String.filter (fun c -> c <> ' ')
+            List.head cards |> name
     image.Write $"{path}\{subPath}\{name}.png"
 
-//let drawingMode = TTS ttsOptions
-let drawingMode = PaperPrintout {
-    Samples = false
-    DrawAllCards = true
-    CompositeCards = true
-    MainOptions = ``3 x 3``
-    GodOptions = ``2 x 2``
-    SettlementOptions = ``2 x 2``
-}
+let drawingMode = TTS ttsOptions
+//let drawingMode = PaperPrintout {
+//    Samples = false
+//    DrawAllCards = true
+//    CompositeCards = true
+//    MainOptions = ``3 x 3``
+//    GodOptions = ``2 x 2``
+//    SettlementOptions = ``2 x 2``
+//}
 
 let outputDirectory = Path.Combine(basePath, GeneratedFolder)
 if Directory.Exists outputDirectory then
     Directory.Delete(outputDirectory, true)
 Directory.CreateDirectory outputDirectory |> ignore
-Path.Combine(outputDirectory, MainFolder) |> Directory.CreateDirectory |> ignore
-Path.Combine(outputDirectory, SettlementFolder) |> Directory.CreateDirectory |> ignore
-Path.Combine(outputDirectory, GodFolder) |> Directory.CreateDirectory |> ignore
 
 try
     match drawingMode with
@@ -385,6 +384,15 @@ try
     | _ ->
         let cards, errors = SpreadsheetLoader.load (basePath + @"Cards.ods")
         File.WriteAllLines(Path.Combine(basePath, GeneratedFolder, "errors.txt"), errors)
+        match drawingMode with
+        | PaperPrintout _ ->
+            Path.Combine(outputDirectory, MainFolder) |> Directory.CreateDirectory |> ignore
+            Path.Combine(outputDirectory, SettlementFolder) |> Directory.CreateDirectory |> ignore
+            Path.Combine(outputDirectory, GodFolder) |> Directory.CreateDirectory |> ignore
+        | TTS _ ->
+            cards 
+            |> Seq.groupBy (fun s -> (core s).Deck)
+            |> Seq.iter (fun (f, _) -> Path.Combine(outputDirectory, string f) |> Directory.CreateDirectory |> ignore)
         cards
     |> Seq.groupBy (
         fun c ->

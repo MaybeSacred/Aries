@@ -62,9 +62,13 @@ let CardCountCol = "AK"
 [<Literal>]
 let ShowCardCountCol = "AL"
 [<Literal>]
-let GenerateCardCol = "AM"
+let PartOfProductCol = "AM"
 [<Literal>]
 let DebugRowNumberCol = "AN"
+[<Literal>]
+let GenerateCardCol = "AO"
+[<Literal>]
+let DeckCol = "AP"
 // if adding a col, update the code at the bottom
 
 type ParsedRow = string option list
@@ -92,6 +96,7 @@ type PartialCard = {
     UpgradeCost: uint option
     FlavorText: string option
     Image: string option
+    Deck: Deck
 }
 
 type RowKind = 
@@ -159,7 +164,7 @@ let tryReadRow (r: ParsedRow) =
     let parseNumeric = tryParse<uint> >> Option.filter (fun s -> s > 0u)
     result {
         let! debug = itemAt DebugRowNumberCol r >>= parseNumeric |> Result.requireSome $"Debug number must be present %A{toDebugRow r}" 
-        do! itemAt GenerateCardCol r >>= parseNumeric |> Result.requireSome $"Skipping row {debug} %A{toDebugRow r}" |> Result.ignore
+        do! itemAt PartOfProductCol r >>= parseNumeric |> Result.requireSome $"Skipping row {debug} %A{toDebugRow r}" |> Result.ignore
         let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{toDebugRow r}"
         let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{toDebugRow r}"
         let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{toDebugRow r}"
@@ -187,6 +192,19 @@ let tryReadRow (r: ParsedRow) =
         let image = itemAt ImageCol r 
         let ally = itemAt AllyCol r >>= parseNumeric
         let trash = itemAt TrashCol r >>= parseNumeric
+        let! deck = 
+            itemAt DeckCol r 
+            |> Result.requireSome $"No deck supplied: %A{r}"
+            >>= (function
+                | "Starter" -> Ok Starter
+                | "Supplier" -> Ok Supplier
+                | "Infantry" -> Ok Infantry
+                | "Mage" -> Ok Mage
+                | "Market" -> Ok Market
+                | "God" -> Ok GodDeck
+                | "Settlement" -> Ok SettlementDeck
+                | "StarterSettlement" -> Ok StarterSettlement
+                | _ -> Error <| $"No deck supplied: %A{r}")
         let row = {
             DebugNumber = debug
             Name = nameOrRowKind
@@ -210,6 +228,7 @@ let tryReadRow (r: ParsedRow) =
             UpgradeCost = upgradeCost
             FlavorText = flavorText
             Image = image
+            Deck = deck
         }
         return createPartial nameOrRowKind upgradeCost ally trash row
     }
@@ -266,6 +285,7 @@ let tryCreateCard main ally =
             ShowCount = main.ShowCardCount
             FlavorText = main.FlavorText
             SubKind = main.SubKind
+            Deck = main.Deck
         }
         let upgraded = main.UpgradeCost |> Option.isSome
         match main.Kind with
