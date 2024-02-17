@@ -164,7 +164,8 @@ let tryReadRow (r: ParsedRow) =
     let parseNumeric = tryParse<uint> >> Option.filter (fun s -> s > 0u)
     result {
         let! debug = itemAt DebugRowNumberCol r >>= parseNumeric |> Result.requireSome $"Debug number must be present %A{toDebugRow r}" 
-        do! itemAt PartOfProductCol r >>= parseNumeric |> Result.requireSome $"Skipping row {debug} %A{toDebugRow r}" |> Result.ignore
+        do! itemAt PartOfProductCol r >>= parseNumeric |> Result.requireSome $"Row {debug} is not part of product %A{toDebugRow r}" |> Result.ignore
+        do! itemAt GenerateCardCol r >>= parseNumeric |> Result.requireSome $"Skipping row {debug} this run %A{toDebugRow r}" |> Result.ignore
         let! nameOrRowKind = itemAt NameCol r |> Result.requireSome $"No name provided for row %A{toDebugRow r}"
         let! faction = itemAt FactionCol r >>= codeToFaction |> Result.requireSome $"No faction provided for row %A{toDebugRow r}"
         let! kind = itemAt KindCol r |> Result.requireSome $"No kind provided for row %A{toDebugRow r}"
@@ -331,7 +332,7 @@ let tryCreateCard main ally =
                 Core = core
                 Faction = main.Faction
                 Health = health
-                SecondaryAbility = None
+                SecondaryAbility = ally
                 TertiaryAbility = None
                 LeftSlot = None
                 TopSlot = None

@@ -24,7 +24,7 @@ let godAbilityBottomPoint = godBoundaries.HeightInInches * dpi - 2. * (``1/8`` +
 // settlement
 let settlementVerticalMidpoint = (settlementBoundaries.WidthInInches - cardBoundaries.WidthInInches) * dpi - ``1/4``
 let settlementAbilityBottomPoint = settlementBoundaries.HeightInInches * dpi - 2. * (``1/8`` + inset)
-let settlementAbilityTopPoint = 1.5<inch> * dpi
+let settlementAbilityTopPoint = 2.5<inch> * dpi
 
 let iconCostRadius = ``3/16``
 let iconCostDiameter = 2. * iconCostRadius
@@ -34,11 +34,9 @@ let iconCostTextYOffset = iconCostRadius + inset - quanta
 let favorRadius = ``1/8`` - quanta
 let favorDiameter = 2. * favorRadius
 
-// TODO: add health to settlements
-// add new faction
+// TODO: 
 // draw some, scrap
 // draw 1, gain anima
-// a few more monsters that give resources
 // wizards tower
 // event cards that deal damage to settlements, discard garrisoned units, discard
 // TODO: pick better icons for health, costs, anima gain
@@ -109,11 +107,13 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
                 MainAbility = 
                     core.MainAbility 
                     |> updateAbilityText prependFavor }, None
+        | Settlement { Core = core; SecondaryAbility = secondary } ->
+            printfn "secondary %A" secondary
+            core, secondary
         | Building { Core = core }
         | Fortification { Core = core }
         | Nomad { Core = core }
-        | Relic { Core = core } 
-        | Settlement { Core = core } ->
+        | Relic { Core = core } ->
             core, None
     i 
     |> match secondary, flavor with
@@ -131,8 +131,8 @@ let drawAbilities (startX: float<dot>) (top: float<dot>) (width: float<dot>) (bo
            drawAbility 0.<dot> (bottom - top) (iconForAbility main) main.Text
     |> line darkGray lineworkWidth startX bottom (startX + width) bottom
 
-let drawCostAt boundaries (cost: CardCost) =
-    let centerX = boundaries.Width - iconCostOffset
+let drawCostAt right (cost: CardCost) =
+    let centerX = right - iconCostOffset
     let circle fill from to' x = filledArc fill darkGray from to' x iconCostOffset iconCostRadius
     let strengthXCenterOffset = iconCostDiameter + 2. * padding
     let createIcon color val' iconCostTextXOffset =
@@ -170,12 +170,12 @@ let drawLogo card =
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
     | Settlement { Core = c; Health = h } -> 
-        let w = (settlementVerticalMidpoint - (2. * (inset + padding) + ``1/2``))
+        let w = (settlementAbilityTopPoint - ``1/2`` - 2. * (inset + padding))
         overlayImage 
             (settlementVerticalMidpoint / 2. - w / 2.)
             (inset + 2. * padding + ``1/2``) 
             w w c.Image
-        >> drawFortificationAbilities (c, h) extraExtraLargeSize (inset + padding) ``3/16``
+        >> drawFortificationAbilities (c, h) extraExtraLargeSize inset ``3/16``
 
 let drawFavor boundaries favor =
     match favor with
@@ -237,7 +237,7 @@ let drawCardCore boundaries (card: Card) (i: ImageState) =
     // logo
     |> drawLogo card
     // cost
-    |> drawCostAt boundaries data.Cost
+    |> drawCostAt boundaries.Width data.Cost
     // favor
     |> drawFavor boundaries data.Favor 
     // ability area
@@ -267,7 +267,7 @@ let drawGod boundaries (card: God) (i: ImageState) =
     // logo
     |> drawLogo (God card)
     // cost
-    |> drawCostAt boundaries card.Core.Cost
+    |> drawCostAt boundaries.Width card.Core.Cost
     // favor
     |> drawFavor boundaries card.Core.Favor 
     // health bar, favor schedule, regular favor placement, cost icons, flavor text
@@ -295,17 +295,17 @@ let drawSettlement boundaries (card: Settlement) (i: ImageState) =
     // logo
     |> drawLogo (Settlement card)
     // cost
-    |> drawCostAt boundaries card.Core.Cost
+    |> drawCostAt (settlementVerticalMidpoint + inset) card.Core.Cost
     // favor
     |> drawFavor boundaries card.Core.Favor
     // TODO: allow for three settlement abilities, with icons
     // health bar, favor schedule, regular favor placement, cost icons, flavor text
     // ability area
-    |> drawAbilities inset settlementVerticalMidpoint (settlementVerticalMidpoint - inset) settlementAbilityBottomPoint (Settlement card)
+    |> drawAbilities inset settlementAbilityTopPoint (settlementVerticalMidpoint - inset) settlementAbilityBottomPoint (Settlement card)
     // name
     |> captionText largeSize (``3/8`` + inset) inset (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` card.Core.Name
     // kind banner
-    |> captionText kindBannerSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot kindBannerSize + 2. * padding) (calculateCaptionText false <| Settlement card)
+    |> captionText kindBannerSize (``3/8`` + inset) (inset + ``3/8``) (settlementVerticalMidpoint - 2. * (``3/8`` + inset)) (fontToDot kindBannerSize + 2. * padding) (calculateCaptionText (not <| String.startsWith "Starter. " card.Core.MainAbility.Text) <| Settlement card)
     // garrison
     |> captionText medSize (settlementVerticalMidpoint + ``3/8`` + inset) ((settlementBoundaries.Height - ``3/8``) / 2.) (settlementBoundaries.Width - settlementVerticalMidpoint - 2. * (``3/8`` + inset)) ``3/8`` "You may Garrison a card here"
     // version
@@ -362,15 +362,15 @@ let drawToFile (path: string) options (cards: Card list) =
             List.head cards |> name
     image.Write $"{path}\{subPath}\{name}.png"
 
-let drawingMode = TTS ttsOptions
-//let drawingMode = PaperPrintout {
-//    Samples = false
-//    DrawAllCards = true
-//    CompositeCards = true
-//    MainOptions = ``3 x 3``
-//    GodOptions = ``2 x 2``
-//    SettlementOptions = ``2 x 2``
-//}
+//let drawingMode = TTS ttsOptions
+let drawingMode = PaperPrintout {
+    Samples = false
+    DrawAllCards = true
+    CompositeCards = true
+    MainOptions = ``3 x 3``
+    GodOptions = ``2 x 2``
+    SettlementOptions = ``2 x 2``
+}
 
 let outputDirectory = Path.Combine(basePath, GeneratedFolder)
 if Directory.Exists outputDirectory then
@@ -394,6 +394,11 @@ try
             |> Seq.groupBy (fun s -> (core s).Deck)
             |> Seq.iter (fun (f, _) -> Path.Combine(outputDirectory, string f) |> Directory.CreateDirectory |> ignore)
         cards
+    //|> Seq.filter (
+    //    function 
+    //    | Settlement _ -> true
+    //    | _ -> false
+    //)
     |> Seq.groupBy (
         fun c ->
             match c, drawingMode with
@@ -415,6 +420,7 @@ try
         |> Seq.map List.ofArray
     )
     |> PSeq.iter (fun card -> drawToFile outputDirectory drawingMode card)
+    // TODO: have settlement abilities work correctly
 finally
     for i in cardCache do
         i.Value.Dispose()

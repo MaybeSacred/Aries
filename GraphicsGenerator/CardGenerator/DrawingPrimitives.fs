@@ -51,6 +51,7 @@ type TextVerticalAlignment = Top | Center | Bottom
 
 let colorWithOpacity (color: IMagickColor<byte>) opacity = MagickColor(color.R, color.G, color.B, opacity)
 
+//let offWhite = MagickColor(0xDBuy, 0xDBuy, 0xDBuy)
 let darkGray = MagickColor(0x14uy, 0x1Duy, 0x1Duy)
 let medGray = MagickColor(0x46uy, 0x58uy, 0x58uy)
 let black = MagickColor(0x00uy, 0x00uy, 0x00uy)
