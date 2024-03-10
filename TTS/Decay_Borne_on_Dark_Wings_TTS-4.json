@@ -1,0 +1,159 @@
+{
+  "SaveName": "",
+  "Date": "",
+  "VersionNumber": "",
+  "GameMode": "",
+  "GameType": "",
+  "GameComplexity": "",
+  "Tags": [],
+  "Gravity": 0.5,
+  "PlayArea": 0.5,
+  "Table": "",
+  "Sky": "",
+  "Note": "",
+  "TabStates": {},
+  "LuaScript": "",
+  "LuaScriptState": "",
+  "XmlUI": "",
+  "ObjectStates": [
+    {
+      "GUID": "Decay_Borne_on_Dark_Wings",
+      "Name": "Custom_Tile",
+      "Transform": {
+        "posX": -14.26,
+        "posY": 1.05,
+        "posZ": 10.38,
+        "rotX": 0,
+        "rotY": 180,
+        "rotZ": 180,
+        "scaleX": 5.46,
+        "scaleY": 1,
+        "scaleZ": 5.46
+      },
+      "Nickname": "Decay Borne on Dark Wings",
+      "Description": "",
+      "GMNotes": "",
+      "AltLookAngle": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "ColorDiffuse": {
+        "r": 0.2003,
+        "g": 0.1603,
+        "b": 0.1518
+      },
+      "Tags": [
+        "Spirit"
+      ],
+      "LayoutGroupSortIndex": 0,
+      "Value": 0,
+      "Locked": false,
+      "Grid": true,
+      "Snap": true,
+      "IgnoreFoW": false,
+      "MeasureMovement": false,
+      "DragSelectable": true,
+      "Autoraise": true,
+      "Sticky": true,
+      "Tooltip": true,
+      "GridProjection": false,
+      "HideWhenFaceDown": false,
+      "Hands": false,
+      "CustomImage": {
+        "ImageURL": "",
+        "ImageSecondaryURL": "",
+        "ImageScalar": 1,
+        "WidthScale": 0,
+        "CustomTile": {
+          "Type": 0,
+          "Thickness": 0.2,
+          "Stackable": false,
+          "Stretch": true
+        }
+      },
+      "LuaScript": "-- Spirit Panel for MJ & iakona's Spirit Island Mod --\nuseProgression = false\nuseAspect = 2\n\nfunction onLoad(saved_data)\n    Color.Add(\"SoftBlue\", Color.new(0.53,0.92,1))\n    Color.Add(\"SoftYellow\", Color.new(1,0.8,0.5))\n    getObjectFromGUID(\"SourceSpirit\").call(\"load\", {obj = self, saved_data = saved_data})\nend",
+      "LuaScriptState": "{\"bonusEnergy\":[],\"thresholds\":[{\"elements\":\"02103000\",\"position\":{\"x\":0.3381,\"y\":0,\"z\":0.3942}},{\"elements\":\"01002000\",\"position\":{\"x\":0.3381,\"y\":0,\"z\":0.5098}},{\"elements\":\"02102001\",\"position\":{\"x\":0.3381,\"y\":0,\"z\":0.6279}},{\"elements\":\"02040000\",\"position\":{\"x\":0.3381,\"y\":0,\"z\":0.746}},{\"elements\":\"02030003\",\"position\":{\"x\":-0.5692,\"y\":0,\"z\":0.3968}},{\"elements\":\"02020002\",\"position\":{\"x\":-0.5692,\"y\":0,\"z\":0.5149}},{\"elements\":\"01020002\",\"position\":{\"x\":-0.5692,\"y\":0,\"z\":0.6279}}],\"trackElements\":[{\"elements\":\"00000001\",\"position\":{\"x\":-0.0476,\"y\":0,\"z\":-0.4308}},{\"elements\":\"01000000\",\"position\":{\"x\":-0.2753,\"y\":0,\"z\":-0.4308}},{\"elements\":\"00010000\",\"position\":{\"x\":-0.503,\"y\":0,\"z\":-0.4308}},{\"elements\":\"00001000\",\"position\":{\"x\":-0.503,\"y\":0,\"z\":-0.0994}}],\"trackEnergy\":[{\"count\":4,\"position\":{\"x\":-0.9584,\"y\":0,\"z\":-0.4308}},{\"count\":3,\"position\":{\"x\":-0.7307,\"y\":0,\"z\":-0.4308}},{\"count\":2,\"position\":{\"x\":-0.503,\"y\":0,\"z\":-0.4308}},{\"count\":1,\"position\":{\"x\":-0.0476,\"y\":0,\"z\":-0.4308}},{\"count\":0,\"position\":{\"x\":0.1801,\"y\":0,\"z\":-0.4308}}]}",
+      "XmlUI": "",
+      "AttachedSnapPoints": [
+        {
+          "Position": {
+            "x": -0.0476,
+            "y": 0.2,
+            "z": -0.4308
+          }
+        },
+        {
+          "Position": {
+            "x": -0.2753,
+            "y": 0.2,
+            "z": -0.4308
+          }
+        },
+        {
+          "Position": {
+            "x": -0.503,
+            "y": 0.2,
+            "z": -0.4308
+          }
+        },
+        {
+          "Position": {
+            "x": -0.7307,
+            "y": 0.2,
+            "z": -0.4308
+          }
+        },
+        {
+          "Position": {
+            "x": -0.9584,
+            "y": 0.2,
+            "z": -0.4308
+          }
+        },
+        {
+          "Position": {
+            "x": -0.0476,
+            "y": 0.2,
+            "z": -0.0994
+          }
+        },
+        {
+          "Position": {
+            "x": -0.2753,
+            "y": 0.2,
+            "z": -0.0994
+          }
+        },
+        {
+          "Position": {
+            "x": -0.503,
+            "y": 0.2,
+            "z": -0.0994
+          }
+        },
+        {
+          "Position": {
+            "x": -0.7307,
+            "y": 0.2,
+            "z": -0.0994
+          }
+        },
+        {
+          "Position": {
+            "x": -0.9584,
+            "y": 0.2,
+            "z": -0.0994
+          }
+        },
+        {
+          "Position": {
+            "x": -1.1861,
+            "y": 0.2,
+            "z": -0.0994
+          }
+        }
+      ]
+    }
+  ]
+}
